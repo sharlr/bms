@@ -1,0 +1,20 @@
+# Local development only: PostgreSQL on 127.0.0.1:5432 with the same non-superuser app role as production.
+#   docker compose -f docker-compose.dev.yml up -d
+#   cd backend && cp .env.dev.example .env && npm run dev        (API on :4000)
+#   cd frontend && npm run dev                                   (SPA on :5173, proxies /api)
+name: bms-dev
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: devsuperuser
+      BMS_DB_USER: bms_app
+      BMS_DB_PASSWORD: devpassword
+      BMS_MASTER_DB: bms_master
+    ports: ["127.0.0.1:5432:5432"]
+    volumes:
+      - pgdev:/var/lib/postgresql/data
+      - ./docker/postgres/init.sh:/docker-entrypoint-initdb.d/10-init.sh:ro
+volumes:
+  pgdev: {}

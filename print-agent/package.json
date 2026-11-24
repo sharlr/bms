@@ -1,0 +1,12 @@
+{
+  "name": "bms-print-agent",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node --env-file=.env agent.mjs"
+  },
+  "dependencies": {
+    "socket.io-client": "^4.8.4"
+  }
+}

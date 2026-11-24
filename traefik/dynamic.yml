@@ -1,0 +1,62 @@
+# Dynamic config. The file provider renders Go templates, so {{ env "BMS_DOMAIN" }} is read from the container env.
+# Path-based multi-tenancy: https://bms.nexusrajan.com/{tenant}/...
+#   /api/*          -> api (Fastify). Tenant = 3rd segment of /api/t/{tenant}/...  WebSockets: /api/socket.io
+#   everything else -> web (nginx serving the SPA; unknown paths fall back to index.html)
+http:
+  routers:
+    api:
+      rule: 'Host(`{{ env "BMS_DOMAIN" }}`) && PathPrefix(`/api`)'
+      entryPoints: [websecure]
+      service: api
+      middlewares: [secure-headers, api-ratelimit, body-limit]
+      tls: { certResolver: le }
+    # Backup upload: large files, so no 1 MB body limit here (the API streams it to disk and caps it at 2 GB).
+    api-backup-upload:
+      rule: 'Host(`{{ env "BMS_DOMAIN" }}`) && PathRegexp(`^/api/t/[a-z0-9-]+/backups/upload$`)'
+      entryPoints: [websecure]
+      service: api
+      priority: 200
+      middlewares: [secure-headers]
+      tls: { certResolver: le }
+    web:
+      rule: 'Host(`{{ env "BMS_DOMAIN" }}`)'
+      entryPoints: [websecure]
+      service: web
+      middlewares: [secure-headers, compress]
+      tls: { certResolver: le }
+  middlewares:
+    secure-headers:
+      headers:
+        stsSeconds: 63072000
+        stsIncludeSubdomains: true
+        stsPreload: true
+        contentTypeNosniff: true
+        frameDeny: true
+        referrerPolicy: strict-origin-when-cross-origin
+        permissionsPolicy: "camera=(), microphone=(), geolocation=(self), payment=()"
+        customResponseHeaders:
+          Server: ""
+          X-Powered-By: ""
+    api-ratelimit:
+      rateLimit:
+        average: 50
+        burst: 100
+        period: 1s
+    body-limit:
+      buffering:
+        maxRequestBodyBytes: 1048576
+    compress:
+      compress: {}
+  services:
+    api:
+      loadBalancer:
+        servers: [{ url: "http://api:4000" }]
+        healthCheck: { path: /api/health, interval: 15s, timeout: 3s }
+    web:
+      loadBalancer:
+        servers: [{ url: "http://web:8080" }]
+tls:
+  options:
+    default:
+      minVersion: VersionTLS12
+      sniStrict: true

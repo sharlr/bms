@@ -1,0 +1,20 @@
+# Local routing — same paths as production, HTTP only, any host (localhost).
+http:
+  routers:
+    api:
+      rule: PathPrefix(`/api`)
+      entryPoints: [web]
+      service: api
+      priority: 100
+    web:
+      rule: PathPrefix(`/`)
+      entryPoints: [web]
+      service: web
+      priority: 1
+  services:
+    api:
+      loadBalancer:
+        servers: [{ url: "http://api:4000" }]
+    web:
+      loadBalancer:
+        servers: [{ url: "http://web:8080" }]

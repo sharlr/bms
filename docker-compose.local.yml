@@ -1,0 +1,61 @@
+# Full stack on Docker Desktop at http://localhost:8080 (no TLS, no domain).
+#   docker compose -f docker-compose.local.yml --env-file .env.local up -d --build
+#   docker compose -f docker-compose.local.yml --env-file .env.local exec -e PLATFORM_ADMIN_EMAIL=you@example.com -e PLATFORM_ADMIN_PASSWORD=... api node dist/scripts/create-platform-admin.js
+name: bms-local
+
+services:
+  traefik:
+    image: traefik:v3.3
+    command: ["--configFile=/etc/traefik/traefik.yml"]
+    ports: ["127.0.0.1:8080:80"]
+    volumes:
+      - ./traefik/local/traefik.yml:/etc/traefik/traefik.yml:ro
+      - ./traefik/local/dynamic.yml:/etc/traefik/dynamic.yml:ro
+    depends_on: [web, api]
+    networks: [edge]
+
+  web:
+    build: ./frontend
+    networks: [edge]
+
+  api:
+    build: ./backend
+    environment:
+      NODE_ENV: production
+      PUBLIC_ORIGIN: http://localhost:8080
+      PAYMENT_PROVIDER: sandbox   # test checkout, no real money
+      PG_HOST: postgres
+      PG_USER: ${BMS_DB_USER:-bms_app}
+      PG_PASSWORD: ${BMS_DB_PASSWORD:?set BMS_DB_PASSWORD}
+      PG_MASTER_DB: ${BMS_MASTER_DB:-bms_master}
+      SECRETS_KEY: ${BMS_SECRETS_KEY:?set BMS_SECRETS_KEY}
+    volumes:
+      - backups:/backups
+    depends_on:
+      postgres: { condition: service_healthy }
+    networks: [edge, internal]
+
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_SUPERUSER_PASSWORD:?set POSTGRES_SUPERUSER_PASSWORD}
+      BMS_DB_USER: ${BMS_DB_USER:-bms_app}
+      BMS_DB_PASSWORD: ${BMS_DB_PASSWORD}
+      BMS_MASTER_DB: ${BMS_MASTER_DB:-bms_master}
+    volumes:
+      - pglocal:/var/lib/postgresql/data
+      - ./docker/postgres/init.sh:/docker-entrypoint-initdb.d/10-init.sh:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d postgres"]
+      interval: 5s
+      retries: 20
+    networks: [internal]
+
+networks:
+  edge: {}
+  internal: { internal: true }
+
+volumes:
+  pglocal: {}
+  backups: {}

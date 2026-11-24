@@ -1,0 +1,410 @@
+import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { Link, Navigate, NavLink, Route, Routes, useLocation, useNavigate, useParams } from 'react-router-dom';
+import { api } from '../../api';
+import { CrudPage } from '../../components/CrudPage';
+import { ReservationsPage } from '../../components/Reservations';
+import { Loading, Modal, useAction } from '../../components/ui';
+import { LANGUAGES, SOFTWARE, THEMES, useT } from '../../i18n';
+import { useSession } from '../../session';
+import { fmt } from '../../util';
+import { BackupPage } from './Backup';
+import { Dashboard } from './Dashboard';
+import { Profile } from './Profile';
+import { CommissionReport, Expenses, ExchangeRates } from './Finance';
+import { FloorEditor } from './FloorEditor';
+import { LowStock, Movements, Recipes, Stock, Waste } from './Inventory';
+import { MenuCatalog } from './MenuCatalog';
+import { MenuItems } from './MenuItems';
+import { Orders } from './Orders';
+import { ItemSalesReport, SettlementReport, StaffReport } from './RangeReports';
+import { MonthlyReport, ShiftHistory, XReport, ZReport } from './Reports';
+import { Branches, Companies, Devices, PrintJobs, Users } from './Settings';
+
+interface NavItem { to?: string; label: string; perm?: string; children?: NavItem[]; external?: boolean }
+
+const NAV: NavItem[] = [
+  { to: '', label: 'Dashboard' },
+  {
+    label: 'POS', children: [
+      { to: 'pos-terminal', label: 'POS Terminal', perm: 'pos.access', external: true },
+      { to: 'floor', label: 'Floor Plan', perm: 'floor.manage' },
+      { to: 'kds-screen', label: 'Kitchen Display', perm: 'kds.view', external: true },
+      { to: 'orders', label: 'Orders / Tickets', perm: 'pos.access' },
+      { to: 'reservations', label: 'Reservations', perm: 'pos.access' },
+      {
+        label: 'Delivery & Commissions', children: [
+          { to: 'delivery/partners', label: 'Delivery Partners', perm: 'delivery.manage' },
+          { to: 'delivery/zones', label: 'Zones', perm: 'delivery.manage' },
+          { to: 'delivery/rules', label: 'Commission Rules', perm: 'delivery.manage' },
+          { to: 'delivery/commissions', label: 'Commission Report', perm: 'delivery.manage' },
+        ],
+      },
+      {
+        label: 'Recipes & Inventory', children: [
+          { to: 'inventory/ingredients', label: 'Ingredients' },
+          { to: 'inventory/stock', label: 'Branch Stock' },
+          { to: 'inventory/recipes', label: 'Recipes' },
+          { to: 'inventory/movements', label: 'Stock Ledger' },
+          { to: 'inventory/low', label: 'Low Stock Alerts' },
+        ],
+      },
+      { to: 'waste', label: 'Waste Management' },
+      { to: 'rates', label: 'Exchange Rates' },
+      {
+        label: 'Counter Expenses', children: [
+          { to: 'expenses', label: 'Expenses', perm: 'expenses.record' },
+          { to: 'expenses/categories', label: 'Categories', perm: 'org.manage' },
+        ],
+      },
+      {
+        label: 'Reports', children: [
+          { to: 'reports/x', label: 'X Report', perm: 'reports.x' },
+          { to: 'reports/z', label: 'Z Report (close day)', perm: 'reports.z' },
+          { to: 'reports/shifts', label: 'X/Z History', perm: 'reports.x' },
+          { to: 'reports/monthly', label: 'Monthly Consolidated', perm: 'reports.monthly' },
+          { to: 'reports/staff', label: 'Staff Activity', perm: 'reports.monthly' },
+          { to: 'reports/settlements', label: 'Settlement-wise Receipts', perm: 'reports.monthly' },
+          { to: 'reports/items', label: 'Item-wise Sales', perm: 'reports.monthly' },
+        ],
+      },
+    ],
+  },
+  {
+    label: 'Menu', children: [
+      { to: 'menu/catalog', label: 'Menu Overview & Prices' },
+      { to: 'menu/categories', label: 'Categories' },
+      { to: 'menu/items', label: 'Items, Sizes & Prices' },
+      { to: 'menu/modifiers', label: 'Modifiers' },
+      { to: 'menu/cooking-notes', label: 'Cooking Notes' },
+      { to: 'menu/stations', label: 'Kitchens & Bars' },
+    ],
+  },
+  {
+    label: 'Clients', children: [
+      { to: 'clients', label: 'Client List' },
+      { to: 'coupons', label: 'Coupons', perm: 'clients.manage' },
+    ],
+  },
+  {
+    label: 'Backup & Restore', children: [
+      { to: 'backup', label: 'Backup & Restore', perm: 'backup.manage' },
+    ],
+  },
+  {
+    label: 'Settings', children: [
+      { to: 'settings/companies', label: 'Companies', perm: 'org.manage' },
+      { to: 'settings/branches', label: 'Branches', perm: 'org.manage' },
+      { to: 'settings/users', label: 'Users', perm: 'users.manage' },
+      { to: 'settings/roles', label: 'Roles & Permissions', perm: 'users.manage' },
+      { to: 'settings/devices', label: 'Devices / Terminals', perm: 'org.manage' },
+      { to: 'settings/printers', label: 'Printers (KOT)', perm: 'org.manage' },
+      { to: 'settings/registers', label: 'Registers', perm: 'org.manage' },
+      { to: 'settings/payment-methods', label: 'Payment Methods', perm: 'org.manage' },
+      { to: 'settings/channels', label: 'Receipt Channels', perm: 'org.manage' },
+      { to: 'settings/print-jobs', label: 'Print Queue', perm: 'org.manage' },
+    ],
+  },
+];
+
+function groupLabels(items: NavItem[]): string[] {
+  return items.flatMap((i) => (i.children ? [i.label, ...groupLabels(i.children)] : []));
+}
+function leafPaths(items: NavItem[]): string[] {
+  return items.flatMap((i) => (i.children ? leafPaths(i.children) : i.to ? [i.to] : []));
+}
+
+function NavTree({ items, depth, can, close, open, setOpen }: {
+  items: NavItem[]; depth: number; can: (p: string) => boolean; close: () => void;
+  open: Record<string, boolean>; setOpen: (o: Record<string, boolean>) => void;
+}) {
+  const { tenant } = useParams();
+  const loc = useLocation();
+  const t = useT();
+  const here = loc.pathname.split('/app/')[1] ?? '';
+  const visible = items.filter((i) => (i.children ? i.children.some((c) => !c.perm || can(c.perm) || c.children) : !i.perm || can(i.perm)));
+  return (
+    <div className={depth === 1 ? 'sub' : depth >= 2 ? 'subsub' : ''}>
+      {visible.map((i) => {
+        if (i.children) {
+          const isOpen = open[i.label] ?? leafPaths(i.children).includes(here);
+          return (
+            <div key={i.label}>
+              <div className={depth === 0 ? 'group-title' : 'subtitle'} role="button" tabIndex={0}
+                onClick={() => setOpen({ ...open, [i.label]: !isOpen })} onKeyDown={(e) => e.key === 'Enter' && setOpen({ ...open, [i.label]: !isOpen })}>
+                {t(i.label)}<span>{isOpen ? '▾' : '▸'}</span>
+              </div>
+              {isOpen && <NavTree items={i.children} depth={depth + 1} can={can} close={close} open={open} setOpen={setOpen} />}
+            </div>
+          );
+        }
+        if (i.external) {
+          const target = i.to === 'pos-terminal' ? 'pos' : 'kds';
+          return <Link key={i.label} to={`/${tenant}/${target}`} onClick={close}>{t(i.label)} ↗</Link>;
+        }
+        return <NavLink key={i.label} end={i.to === ''} to={`/${tenant}/app/${i.to}`} onClick={close}>{t(i.label)}</NavLink>;
+      })}
+    </div>
+  );
+}
+
+/** Click-to-open popover anchored to its trigger; closes on outside click. */
+function Pop({ trigger, children }: { trigger: (toggle: () => void) => ReactNode; children: (close: () => void) => ReactNode }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const h = (e: MouseEvent) => { if (!ref.current?.contains(e.target as Node)) setOpen(false); };
+    document.addEventListener('mousedown', h);
+    return () => document.removeEventListener('mousedown', h);
+  }, [open]);
+  return <div ref={ref} style={{ position: 'relative' }}>{trigger(() => setOpen(!open))}{open && <div className="menu-pop">{children(() => setOpen(false))}</div>}</div>;
+}
+
+export function AdminApp() {
+  const { me, loading, can, branchId, switchBranch, reload } = useSession();
+  const { tenant } = useParams();
+  const nav = useNavigate();
+  const t = useT();
+  const run = useAction();
+  const [sideOpen, setSideOpen] = useState(false); // mobile drawer
+  const [sideHidden, setSideHidden] = useState(localStorage.getItem('bms:side-hidden') === '1'); // desktop collapse
+  const [open, setOpen] = useState<Record<string, boolean>>({ Dashboard: true, POS: true });
+  const [about, setAbout] = useState(false);
+  if (loading) return <Loading />;
+  if (!me?.user) return <Navigate to={`/${tenant}/login`} replace />;
+  const ctx = me.context!;
+  const u = me.user;
+  const branch = ctx.branches.find((b) => b.id === branchId);
+  const logout = async () => { await api.post('/auth/logout', {}); await reload(); nav(`/${tenant}`); };
+  const setPref = async (body: object) => { if (await run(() => api.patch('/auth/profile', body))) await reload(); };
+  const toggleSide = () => {
+    if (window.matchMedia('(max-width: 900px)').matches) return setSideOpen(!sideOpen);
+    localStorage.setItem('bms:side-hidden', sideHidden ? '0' : '1');
+    setSideHidden(!sideHidden);
+  };
+  const allGroups = groupLabels(NAV);
+  const initials = u.full_name.split(' ').map((x) => x[0]).join('').slice(0, 2).toUpperCase();
+
+  const g = (perm: string | null, el: ReactNode) => (!perm || can(perm) ? el : <div className="card">You do not have access to this page.</div>);
+
+  return (
+    <div className={`shell ${sideHidden ? 'side-hidden' : ''}`}>
+      <aside className={`side ${sideOpen ? 'open' : ''}`}>
+        <div className="side-brand">
+          <div className="logo">{SOFTWARE.initials}</div>
+          <div><b>{SOFTWARE.name}</b><span>{SOFTWARE.company}</span><span>{SOFTWARE.version}</span></div>
+        </div>
+        <div className="side-tools">
+          <button title={t('Expand all')} aria-label={t('Expand all')} onClick={() => setOpen(Object.fromEntries(allGroups.map((l) => [l, true])))}>+</button>
+          <button title={t('Collapse all')} aria-label={t('Collapse all')} onClick={() => setOpen(Object.fromEntries(allGroups.map((l) => [l, false])))}>−</button>
+        </div>
+        <NavTree items={NAV} depth={0} can={can} close={() => setSideOpen(false)} open={open} setOpen={setOpen} />
+      </aside>
+      <div style={{ minWidth: 0 }}>
+        <div className="topbar">
+          <button className="burger icon-btn" title={sideHidden ? t('Show menu') : t('Hide menu')} aria-label={t('Hide menu')} onClick={toggleSide}>☰</button>
+          {/* Tenant / company / branch — the branch select is the context switcher */}
+          <div className="crumb">
+            <span className="muted">{me.tenant.name}</span><span className="muted">/</span>
+            <span>{branch?.company_name}</span><span className="muted">/</span>
+            <select aria-label="Company and branch" value={branchId ?? ''} onChange={(e) => switchBranch(Number(e.target.value))}>
+              {ctx.companies.map((c) => (
+                <optgroup key={c.id} label={`${c.name} (${c.base_currency})`}>
+                  {ctx.branches.filter((b) => b.company_id === c.id).map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
+                </optgroup>
+              ))}
+            </select>
+          </div>
+          <div className="grow" />
+          <Pop trigger={(toggle) => <button className="icon-btn" title={t('Theme')} aria-label={t('Theme')} onClick={toggle}>🎨</button>}>
+            {(close) => THEMES.map((th) => (
+              <button key={th.code} onClick={() => { close(); setPref({ theme: th.code }); }}>
+                <span className="swatch" style={{ background: th.swatch }} /> {th.label} {u.theme === th.code && '✓'}
+              </button>
+            ))}
+          </Pop>
+          <Pop trigger={(toggle) => <button className="icon-btn" aria-label={t('Language')} onClick={toggle}>🌐 {u.language.toUpperCase()} {LANGUAGES.find((l) => l.code === u.language)?.label}</button>}>
+            {(close) => LANGUAGES.map((l) => (
+              <button key={l.code} onClick={() => { close(); setPref({ language: l.code }); }}>{l.code.toUpperCase()} {l.label} {u.language === l.code && '✓'}</button>
+            ))}
+          </Pop>
+          <Pop trigger={(toggle) => (
+            <div className="user-chip" role="button" tabIndex={0} onClick={toggle} onKeyDown={(e) => e.key === 'Enter' && toggle()}>
+              <div className="who"><b>{u.full_name}</b><br /><small>{u.position || u.role_name}</small></div>
+              <div className="avatar-sm" style={{ background: u.color }}>{initials}</div>
+            </div>
+          )}>
+            {(close) => <>
+              <button onClick={() => { close(); nav(`/${tenant}/app/profile`); }}>👤 {t('My profile')}</button>
+              <button onClick={() => { close(); setAbout(true); }}>ℹ️ {t('About the Software')}</button>
+            </>}
+          </Pop>
+          <button className="icon-btn" title={t('Sign out')} aria-label={t('Sign out')} onClick={logout}>⎋</button>
+        </div>
+        {about && (
+          <Modal title={t('About the Software')} onClose={() => setAbout(false)}>
+            <div className="stack center">
+              <div className="side-brand" style={{ background: 'var(--side-bg)', borderRadius: 12, padding: '1rem', justifyContent: 'center' }}>
+                <div className="logo">{SOFTWARE.initials}</div><div style={{ textAlign: 'left' }}><b>{SOFTWARE.name}</b><span>{SOFTWARE.version}</span></div>
+              </div>
+              <p>Multi-tenant restaurant management &amp; POS.<br />© {new Date().getFullYear()} {SOFTWARE.company}</p>
+              <p className="small muted">Tenant: {me.tenant.name} ({me.tenant.slug})</p>
+            </div>
+          </Modal>
+        )}
+        <main className="content" key={branchId ?? 0}>
+          <Routes>
+            <Route index element={<Dashboard />} />
+            <Route path="profile" element={<Profile />} />
+            <Route path="backup" element={g('backup.manage', <BackupPage />)} />
+            <Route path="floor" element={g('floor.manage', <FloorEditor />)} />
+            <Route path="orders" element={g('pos.access', <Orders />)} />
+            <Route path="reservations" element={g('pos.access', <ReservationsPage />)} />
+            <Route path="delivery/partners" element={g('delivery.manage', <CrudPage title="Delivery Partners" path="/delivery/companies"
+              columns={[{ key: 'name', label: 'Name' }, { key: 'phone', label: 'Phone' }, { key: 'available_online', label: 'Online' }, { key: 'active', label: 'Active' }]}
+              fields={[{ key: 'name', label: 'Name', required: true }, { key: 'phone', label: 'Phone' }, { key: 'email', label: 'Email' },
+                { key: 'available_online', label: 'Selectable by online customers', type: 'bool' }, { key: 'sort', label: 'Sort', type: 'number' }, { key: 'active', label: 'Active', type: 'bool' }]}
+              defaults={{ available_online: true, active: true }} />)} />
+            <Route path="delivery/zones" element={g('delivery.manage', <CrudPage title="Delivery Zones" path="/delivery/zones"
+              columns={[{ key: 'name', label: 'Zone' }, { key: 'active', label: 'Active' }]} fields={[{ key: 'name', label: 'Zone', required: true }, { key: 'active', label: 'Active', type: 'bool' }]} defaults={{ active: true }} />)} />
+            <Route path="delivery/rules" element={g('delivery.manage', <CrudPage title="Commission Rules" path="/delivery/rules"
+              columns={[{ key: 'delivery_company_id', label: 'Partner' }, { key: 'basis', label: 'Basis' }, { key: 'commission_type', label: 'Type' },
+                { key: 'value', label: 'Value', num: true }, { key: 'zone_id', label: 'Zone' }, { key: 'client_id', label: 'Client' }, { key: 'menu_item_id', label: 'Item' },
+                { key: 'branch_id', label: 'Branch' }, { key: 'priority', label: 'Priority', num: true }, { key: 'active', label: 'Active' }]}
+              fields={[
+                { key: 'delivery_company_id', label: 'Delivery partner', type: 'select', required: true, optionsFrom: { path: '/delivery/companies', label: 'name' }, createOnly: true },
+                { key: 'basis', label: 'Calculation basis', type: 'select', required: true, options: [
+                  { value: 'delivery', label: 'Per delivery (order)' }, { value: 'item', label: 'Per item' }, { value: 'zone', label: 'Per location / zone' }, { value: 'client', label: 'Per client' }] },
+                { key: 'commission_type', label: 'Commission type', type: 'select', required: true, options: [{ value: 'fixed', label: 'Fixed amount' }, { value: 'percent', label: 'Percentage' }] },
+                { key: 'value', label: 'Value', type: 'number', required: true },
+                { key: 'zone_id', label: 'Zone (zone basis)', type: 'select', optionsFrom: { path: '/delivery/zones', label: 'name', nullLabel: '—' } },
+                { key: 'client_id', label: 'Client (client basis)', type: 'select', optionsFrom: { path: '/clients', label: 'name', nullLabel: '—' } },
+                { key: 'menu_item_id', label: 'Item (item basis; empty = all items)', type: 'select', optionsFrom: { path: '/menu/items', label: 'name', nullLabel: 'All items' } },
+                { key: 'branch_id', label: 'Branch (empty = all)', type: 'select', optionsFrom: { path: '/branches', label: 'name', nullLabel: 'All branches' } },
+                { key: 'priority', label: 'Priority', type: 'number' }, { key: 'active', label: 'Active', type: 'bool' }]}
+              defaults={{ basis: 'delivery', commission_type: 'percent', value: 0, priority: 0, active: true }} />)} />
+            <Route path="delivery/commissions" element={g('delivery.manage', <CommissionReport />)} />
+            <Route path="inventory/ingredients" element={<CrudPage title="Ingredients" path="/inventory/ingredients" canWrite={can('inventory.manage')}
+              columns={[{ key: 'name', label: 'Name' }, { key: 'unit', label: 'Unit' }, { key: 'cost_per_unit', label: 'Cost / unit', num: true }, { key: 'active', label: 'Active' }]}
+              fields={[{ key: 'name', label: 'Name', required: true }, { key: 'unit', label: 'Unit (g, ml, pcs…)', required: true }, { key: 'cost_per_unit', label: 'Cost per unit', type: 'number' }, { key: 'active', label: 'Active', type: 'bool' }]}
+              defaults={{ unit: 'g', cost_per_unit: 0, active: true }} />} />
+            <Route path="inventory/stock" element={<Stock />} />
+            <Route path="inventory/recipes" element={<Recipes />} />
+            <Route path="inventory/movements" element={<Movements />} />
+            <Route path="inventory/low" element={<LowStock />} />
+            <Route path="waste" element={<Waste />} />
+            <Route path="rates" element={<ExchangeRates />} />
+            <Route path="expenses" element={g('expenses.record', <Expenses />)} />
+            <Route path="expenses/categories" element={g('org.manage', <CrudPage title="Expense Categories" path="/expense-categories"
+              columns={[{ key: 'name', label: 'Name' }, { key: 'active', label: 'Active' }]} fields={[{ key: 'name', label: 'Name', required: true }, { key: 'active', label: 'Active', type: 'bool' }]} defaults={{ active: true }} />)} />
+            <Route path="reports/x" element={g('reports.x', <XReport />)} />
+            <Route path="reports/z" element={g('reports.z', <ZReport />)} />
+            <Route path="reports/shifts" element={g('reports.x', <ShiftHistory />)} />
+            <Route path="reports/monthly" element={g('reports.monthly', <MonthlyReport />)} />
+            <Route path="reports/staff" element={g('reports.monthly', <StaffReport />)} />
+            <Route path="reports/settlements" element={g('reports.monthly', <SettlementReport />)} />
+            <Route path="reports/items" element={g('reports.monthly', <ItemSalesReport />)} />
+            <Route path="menu/categories" element={<CrudPage title="Menu Categories" path="/menu/categories" canWrite={can('menu.manage')}
+              columns={[{ key: 'name', label: 'Name' }, { key: 'station_id', label: 'Prepared in' }, { key: 'color', label: 'Color' }, { key: 'sort', label: 'Sort', num: true }, { key: 'active', label: 'Active' }]}
+              fields={[{ key: 'name', label: 'Name', required: true },
+                { key: 'station_id', label: 'Prepared in (kitchen / bar)', type: 'select', optionsFrom: { path: '/prep-stations', label: 'name', nullLabel: 'No kitchen ticket' } },
+                { key: 'parent_id', label: 'Parent category', type: 'select', optionsFrom: { path: '/menu/categories', label: 'name', nullLabel: '— top level —' } },
+                { key: 'color', label: 'Tab color', type: 'color' }, { key: 'sort', label: 'Sort', type: 'number' }, { key: 'active', label: 'Active', type: 'bool' }]}
+              defaults={{ station_id: null, color: '#64748b', sort: 0, active: true }} />} />
+            <Route path="menu/items" element={<MenuItems />} />
+            <Route path="menu/catalog" element={<MenuCatalog />} />
+            <Route path="menu/stations" element={<CrudPage title="Kitchens & Bars (preparation stations)" path="/prep-stations" canWrite={can('menu.manage')}
+              columns={[{ key: 'name', label: 'Name' }, { key: 'color', label: 'Colour' }, { key: 'sort', label: 'Sort', num: true }, { key: 'active', label: 'Active' }]}
+              fields={[{ key: 'name', label: 'Name (e.g. Grill, Pizza oven, Pool bar)', required: true }, { key: 'color', label: 'Colour on the kitchen display', type: 'color' },
+                { key: 'sort', label: 'Sort', type: 'number' }, { key: 'active', label: 'Active', type: 'bool' }]}
+              defaults={{ color: '#2563eb', sort: 0, active: true }} />} />
+            <Route path="menu/cooking-notes" element={<CrudPage title="Cooking Notes" path="/menu/cooking-notes" canWrite={can('menu.manage')}
+              columns={[{ key: 'text', label: 'Note' }, { key: 'sort', label: 'Sort', num: true }, { key: 'active', label: 'Active' }]}
+              fields={[{ key: 'text', label: 'Note (e.g. Well done)', required: true }, { key: 'sort', label: 'Sort', type: 'number' }, { key: 'active', label: 'Active', type: 'bool' }]}
+              defaults={{ sort: 0, active: true }} />} />
+            <Route path="menu/modifiers" element={<div className="stack">
+              <CrudPage title="Modifier Groups" path="/menu/modifier-groups" canWrite={can('menu.manage')}
+                columns={[{ key: 'name', label: 'Group' }, { key: 'min_select', label: 'Min', num: true }, { key: 'max_select', label: 'Max', num: true }, { key: 'active', label: 'Active' }]}
+                fields={[{ key: 'name', label: 'Name', required: true }, { key: 'min_select', label: 'Min selections', type: 'number' }, { key: 'max_select', label: 'Max selections', type: 'number' }, { key: 'active', label: 'Active', type: 'bool' }]}
+                defaults={{ min_select: 0, max_select: 5, active: true }} />
+              <CrudPage title="Modifiers" path="/menu/modifiers" canWrite={can('menu.manage')}
+                columns={[{ key: 'group_id', label: 'Group' }, { key: 'name', label: 'Modifier' }, { key: 'price_delta', label: 'Price +/-', num: true }, { key: 'active', label: 'Active' }]}
+                fields={[{ key: 'group_id', label: 'Group', type: 'select', required: true, optionsFrom: { path: '/menu/modifier-groups', label: 'name' }, createOnly: true },
+                  { key: 'name', label: 'Name', required: true }, { key: 'price_delta', label: 'Price change', type: 'number' }, { key: 'sort', label: 'Sort', type: 'number' }, { key: 'active', label: 'Active', type: 'bool' }]}
+                defaults={{ price_delta: 0, sort: 0, active: true }} />
+            </div>} />
+            <Route path="clients" element={<CrudPage title="Client List" path="/clients" canWrite={can('clients.manage')}
+              columns={[{ key: 'name', label: 'Name' }, { key: 'phone', label: 'Phone' }, { key: 'credit_allowed', label: 'Credit' },
+                { key: 'credit_limit', label: 'Limit', num: true }, { key: 'balance', label: 'Balance owed', num: true, render: (r) => fmt(r.balance) }, { key: 'active', label: 'Active' }]}
+              fields={[{ key: 'name', label: 'Name', required: true }, { key: 'phone', label: 'Phone' }, { key: 'email', label: 'Email' }, { key: 'tax_id', label: 'Tax ID' },
+                { key: 'address', label: 'Address', type: 'textarea' }, { key: 'credit_allowed', label: 'Allow credit sales', type: 'bool' },
+                { key: 'credit_limit', label: 'Credit limit (0 = unlimited)', type: 'number' }, { key: 'notes', label: 'Notes', type: 'textarea' }, { key: 'active', label: 'Active', type: 'bool' }]}
+              defaults={{ credit_allowed: false, credit_limit: 0, active: true }} />} />
+            <Route path="coupons" element={g('clients.manage', <CrudPage title="Coupons" path="/coupons"
+              columns={[{ key: 'code', label: 'Code' }, { key: 'discount_type', label: 'Type' }, { key: 'value', label: 'Value', num: true }, { key: 'used_count', label: 'Used', num: true }, { key: 'max_uses', label: 'Max', num: true }, { key: 'active', label: 'Active' }]}
+              fields={[{ key: 'code', label: 'Code', required: true }, { key: 'discount_type', label: 'Type', type: 'select', required: true, options: [{ value: 'percent', label: 'Percent' }, { value: 'fixed', label: 'Fixed' }] },
+                { key: 'value', label: 'Value', type: 'number', required: true }, { key: 'min_order', label: 'Minimum order', type: 'number' },
+                { key: 'valid_from', label: 'Valid from', type: 'date' }, { key: 'valid_to', label: 'Valid to', type: 'date' }, { key: 'max_uses', label: 'Max uses', type: 'number' }, { key: 'active', label: 'Active', type: 'bool' }]}
+              defaults={{ discount_type: 'percent', min_order: 0, active: true }} />)} />
+            <Route path="settings/companies" element={g('org.manage', <Companies />)} />
+            <Route path="settings/branches" element={g('org.manage', <Branches />)} />
+            <Route path="settings/users" element={g('users.manage', <Users />)} />
+            <Route path="settings/roles" element={g('users.manage', <Roles />)} />
+            <Route path="settings/devices" element={g('org.manage', <Devices />)} />
+            <Route path="settings/printers" element={g('org.manage', <CrudPage title="Printers (per branch)" path="/printers"
+              columns={[{ key: 'name', label: 'Name' }, { key: 'kind', label: 'Kind' }, { key: 'station_id', label: 'Kitchen / bar' }, { key: 'connection', label: 'Connection' }, { key: 'active', label: 'Active' }]}
+              fields={[{ key: 'name', label: 'Name', required: true },
+                { key: 'kind', label: 'Kind', type: 'select', required: true, options: [{ value: 'kot', label: 'Kitchen ticket (KOT)' }, { value: 'receipt', label: 'Receipt' }] },
+                { key: 'station_id', label: 'Kitchen / bar (for KOT printers)', type: 'select', optionsFrom: { path: '/prep-stations', label: 'name', nullLabel: '— (receipt printer)' } },
+                { key: 'connection', label: 'Connection', help: 'tcp://192.168.1.50:9100 (reached by the in-store print agent), or "browser" for receipts' },
+                { key: 'chars_per_line', label: 'Characters per line', type: 'number' }, { key: 'active', label: 'Active', type: 'bool' }]}
+              defaults={{ kind: 'kot', station_id: null, connection: 'tcp://192.168.1.50:9100', chars_per_line: 42, active: true }} />)} />
+            <Route path="settings/registers" element={g('org.manage', <CrudPage title="Registers / Counters" path="/registers"
+              columns={[{ key: 'name', label: 'Name' }, { key: 'active', label: 'Active' }]} fields={[{ key: 'name', label: 'Name', required: true }, { key: 'active', label: 'Active', type: 'bool' }]} defaults={{ active: true }} />)} />
+            <Route path="settings/payment-methods" element={g('org.manage', <CrudPage title="Payment Methods" path="/payment-methods"
+              columns={[{ key: 'name', label: 'Name' }, { key: 'method_type', label: 'Type' }, { key: 'sort', label: 'Sort', num: true }, { key: 'active', label: 'Active' }]}
+              fields={[{ key: 'name', label: 'Name', required: true }, { key: 'method_type', label: 'Type', type: 'select', required: true, options: ['cash', 'card', 'credit', 'mobile_money', 'voucher', 'other'].map((v) => ({ value: v, label: v })) },
+                { key: 'sort', label: 'Sort', type: 'number' }, { key: 'active', label: 'Active', type: 'bool' }]} defaults={{ method_type: 'cash', sort: 0, active: true }} />)} />
+            <Route path="settings/channels" element={g('org.manage', <CrudPage title="Receipt Channels" path="/receipt-channels"
+              columns={[{ key: 'code', label: 'Code' }, { key: 'name', label: 'Name' }, { key: 'channel_type', label: 'Type' }, { key: 'branch_id', label: 'Branch' }, { key: 'active', label: 'Active' }]}
+              fields={[{ key: 'code', label: 'Code (A-Z, 0-9, _)', required: true }, { key: 'name', label: 'Name', required: true },
+                { key: 'channel_type', label: 'Type', type: 'select', required: true, options: ['pos', 'waiter', 'takeaway', 'kiosk', 'qr', 'online', 'delivery'].map((v) => ({ value: v, label: v })) },
+                { key: 'branch_id', label: 'Branch (empty = all)', type: 'select', optionsFrom: { path: '/branches', label: 'name', nullLabel: 'All branches' } },
+                { key: 'active', label: 'Active', type: 'bool' }]} defaults={{ channel_type: 'pos', active: true }} />)} />
+            <Route path="settings/print-jobs" element={g('org.manage', <PrintJobs />)} />
+            <Route path="*" element={<div className="card">Not found</div>} />
+          </Routes>
+        </main>
+      </div>
+    </div>
+  );
+}
+
+function Roles() {
+  const [perms, setPerms] = useState<Record<string, string> | null>(null);
+  useEffect(() => { api.get('/auth/permissions').then(setPerms).catch(() => undefined); }, []);
+  return <CrudPage title="Roles & Permissions" path="/roles" deleteLabel={null}
+    columns={[{ key: 'name', label: 'Role' }, { key: 'permissions', label: 'Permissions', render: (r) => <span className="small">{r.permissions.join(', ')}</span> }]}
+    fields={[{ key: 'name', label: 'Name', required: true }]}
+    defaults={{ permissions: [] }}
+    rowActions={(r, reload) => perms && <PermEditor role={r} perms={perms} onSaved={reload} />} />;
+}
+
+function PermEditor({ role, perms, onSaved }: { role: any; perms: Record<string, string>; onSaved: () => void }) {
+  const [open, setOpen] = useState(false);
+  const [sel, setSel] = useState<string[]>(role.permissions);
+  if (!open) return <button className="sm" onClick={() => setOpen(true)}>Permissions</button>;
+  return (
+    <div className="modal-back"><div className="modal">
+      <h2>{role.name}</h2>
+      <label className="check"><input type="checkbox" checked={sel.includes('*')} onChange={(e) => setSel(e.target.checked ? ['*'] : [])} /> <b>All permissions (administrator)</b></label>
+      <div className="grid2">{Object.entries(perms).map(([k, v]) => (
+        <label key={k} className="check small"><input type="checkbox" disabled={sel.includes('*')} checked={sel.includes(k)} onChange={(e) => setSel(e.target.checked ? [...sel, k] : sel.filter((x) => x !== k))} /> {v}</label>
+      ))}</div>
+      <div className="row" style={{ justifyContent: 'flex-end', marginTop: '1rem' }}>
+        <button onClick={() => setOpen(false)}>Cancel</button>
+        <button className="primary" onClick={async () => { await api.patch(`/roles/${role.id}`, { permissions: sel }); setOpen(false); onSaved(); }}>Save</button>
+      </div>
+    </div></div>
+  );
+}

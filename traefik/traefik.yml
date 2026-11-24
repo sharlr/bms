@@ -1,0 +1,39 @@
+# Static Traefik configuration. Uses the FILE provider (no docker.sock mount = smaller attack surface).
+global:
+  checkNewVersion: false
+  sendAnonymousUsage: false
+log:
+  level: WARN
+accessLog:
+  filters:
+    statusCodes: ["400-599"]
+api:
+  dashboard: false
+entryPoints:
+  web:
+    address: ":80"
+    http:
+      redirections:
+        entryPoint: { to: websecure, scheme: https, permanent: true }
+  websecure:
+    address: ":443"
+    http:
+      tls:
+        certResolver: le
+    transport:
+      respondingTimeouts:
+        readTimeout: 60s
+        writeTimeout: 60s
+        idleTimeout: 180s
+certificatesResolvers:
+  le:
+    acme:
+      # Overridden by --certificatesresolvers.le.acme.email in docker-compose.yml (from ACME_EMAIL)
+      email: admin@example.com
+      storage: /letsencrypt/acme.json
+      httpChallenge:
+        entryPoint: web
+providers:
+  file:
+    filename: /etc/traefik/dynamic.yml
+    watch: true

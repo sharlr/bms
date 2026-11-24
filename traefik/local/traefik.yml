@@ -1,0 +1,14 @@
+# Local (Docker Desktop) Traefik: plain HTTP on :80 inside the container, published as localhost:8080. No ACME.
+global:
+  checkNewVersion: false
+  sendAnonymousUsage: false
+log:
+  level: WARN
+api:
+  dashboard: false
+entryPoints:
+  web:
+    address: ":80"
+providers:
+  file:
+    filename: /etc/traefik/dynamic.yml
