@@ -1,3 +1,4 @@
+import { useT as useTr } from '../i18n';
 import { useEffect, useState } from 'react';
 import { Link, Navigate, useNavigate, useParams } from 'react-router-dom';
 import { api, setContext } from '../api';
@@ -5,11 +6,12 @@ import { Loading, Numpad, PinDots, useAction } from '../components/ui';
 import { landingRoute, useSession } from '../session';
 
 export function Landing() {
+  const tr = useTr();
   return (
     <div className="login-wrap">
       <div className="card login-card center">
-        <h1>BMS Restaurant Cloud</h1>
-        <p className="muted">Open your restaurant at <code>/{'{restaurant}'}</code>, e.g. <code>/pizzahut</code>.</p>
+        <h1>{tr("BMS Restaurant Cloud")}</h1>
+        <p className="muted">{tr("Open your restaurant at ")}<code>/{tr("{restaurant}")}</code>{tr(", e.g. ")}<code>{tr("/pizzahut")}</code>.</p>
       </div>
     </div>
   );
@@ -18,10 +20,11 @@ export function Landing() {
 const modeRoute: Record<string, string> = { pos: 'pos', waiter: 'pos', takeaway: 'pos', kds: 'kds', kiosk: 'kiosk' };
 
 export function TenantHome() {
+  const tr = useTr();
   const { me, loading, error } = useSession();
   const { tenant } = useParams();
   if (loading) return <Loading />;
-  if (error || !me) return <div className="login-wrap"><div className="card login-card center"><h2>Restaurant not found</h2></div></div>;
+  if (error || !me) return <div className="login-wrap"><div className="card login-card center"><h2>{tr("Restaurant not found")}</h2></div></div>;
   if (me.user) {
     const r = me.user.device_bound && me.device ? modeRoute[me.device.mode] : landingRoute(me.user);
     return <Navigate to={`/${tenant}/${r ?? 'app'}`} replace />;
@@ -32,15 +35,16 @@ export function TenantHome() {
     <div className="login-wrap">
       <div className="card login-card stack center">
         <h1>{me.tenant.name}</h1>
-        <Link className="btn primary lg" to={`/${tenant}/order`}>🍕 Order online</Link>
-        <Link className="btn lg" to={`/${tenant}/reserve`}>📅 Reserve a table</Link>
-        <Link className="btn lg" to={`/${tenant}/login`}>Staff login</Link>
+        <Link className="btn primary lg" to={`/${tenant}/order`}>{tr("🍕 Order online")}</Link>
+        <Link className="btn lg" to={`/${tenant}/reserve`}>{tr("📅 Reserve a table")}</Link>
+        <Link className="btn lg" to={`/${tenant}/login`}>{tr("Staff login")}</Link>
       </div>
     </div>
   );
 }
 
 export function Login() {
+  const tr = useTr();
   const { me, reload } = useSession();
   const nav = useNavigate();
   const { tenant } = useParams();
@@ -69,18 +73,18 @@ export function Login() {
   return (
     <div className="login-wrap">
       <form className="card login-card stack" onSubmit={submit}>
-        <h1>{me?.tenant.name ?? 'Sign in'}</h1>
-        <p className="muted small">Sign in with your username, password and branch. Staff on a registered terminal can use their PIN instead.</p>
-        <label className="field">Username<input autoComplete="username" value={u} onChange={(e) => setU(e.target.value)} autoFocus /></label>
-        <label className="field">Password<input type="password" autoComplete="current-password" value={p} onChange={(e) => setP(e.target.value)} /></label>
+        <h1>{me?.tenant.name ?? tr("Sign in")}</h1>
+        <p className="muted small">{tr("Sign in with your username, password and branch. Staff on a registered terminal can use their PIN instead.")}</p>
+        <label className="field">{tr("Username")}<input autoComplete="username" value={u} onChange={(e) => setU(e.target.value)} autoFocus /></label>
+        <label className="field">{tr("Password")}<input type="password" autoComplete="current-password" value={p} onChange={(e) => setP(e.target.value)} /></label>
         {branches.length > 0 && (
-          <label className="field">Branch<select value={branch ?? ''} onChange={(e) => setBranch(Number(e.target.value))} required>
+          <label className="field">{tr("Branch")}<select value={branch ?? ''} onChange={(e) => setBranch(Number(e.target.value))} required>
             {branches.map((b) => <option key={b.id} value={b.id}>{b.company_name} — {b.name}</option>)}
           </select></label>
         )}
-        {err && <div className="bad small">{err}</div>}
-        <button className="primary lg" type="submit">Sign in</button>
-        {me?.device && <Link to={`/${tenant}/terminal`} className="small center">Back to terminal login</Link>}
+        {err && <div className="bad small">{tr(err)}</div>}
+        <button className="primary lg" type="submit">{tr("Sign in")}</button>
+        {me?.device && <Link to={`/${tenant}/terminal`} className="small center">{tr("Back to terminal login")}</Link>}
       </form>
     </div>
   );
@@ -88,6 +92,7 @@ export function Login() {
 
 /** Touch login: tap your name, enter your 4-digit PIN. Only on registered devices. */
 export function Terminal() {
+  const tr = useTr();
   const { me, reload, loading } = useSession();
   const nav = useNavigate();
   const { tenant } = useParams();
@@ -115,9 +120,9 @@ export function Terminal() {
   if (loading) return <Loading />;
   if (!me?.device) return (
     <div className="login-wrap"><div className="card login-card stack center">
-      <h2>Terminal not registered</h2>
-      <p className="muted">A manager must sign in and register this screen under Settings → Devices.</p>
-      <Link className="btn primary" to={`/${tenant}/login`}>Manager sign in</Link>
+      <h2>{tr("Terminal not registered")}</h2>
+      <p className="muted">{tr("A manager must sign in and register this screen under Settings → Devices.")}</p>
+      <Link className="btn primary" to={`/${tenant}/login`}>{tr("Manager sign in")}</Link>
     </div></div>
   );
   return (
@@ -125,7 +130,7 @@ export function Terminal() {
       <div style={{ width: '100%', maxWidth: 960 }} className="stack">
         <div className="row between" style={{ color: '#fff' }}>
           <h1 style={{ color: '#fff' }}>{me.tenant.name} · {me.device.name}</h1>
-          <span className="pill info">{me.device.mode.toUpperCase()} MODE</span>
+          <span className="pill info">{me.device.mode.toUpperCase()} {tr(" MODE")}</span>
         </div>
         {!sel ? (
           <div className="staff-grid">
@@ -136,19 +141,19 @@ export function Terminal() {
                 <span className="small" style={{ opacity: .8 }}>{s.role_name}</span>
               </button>
             ))}
-            {staff?.length === 0 && <div className="card">No staff with a PIN are assigned to this branch.</div>}
+            {staff?.length === 0 && <div className="card">{tr("No staff with a PIN are assigned to this branch.")}</div>}
           </div>
         ) : (
           <div className="card" style={{ maxWidth: 360, margin: '0 auto', width: '100%' }}>
-            <div className="row between"><h2>{sel.full_name}</h2><button className="ghost" onClick={() => setSel(null)}>← Back</button></div>
+            <div className="row between"><h2>{sel.full_name}</h2><button className="ghost" onClick={() => setSel(null)}>{tr("← Back")}</button></div>
             <PinDots n={pin.length} />
-            {err && <div className="bad center small">{err}</div>}
+            {err && <div className="bad center small">{tr(err)}</div>}
             <Numpad value={pin} onChange={tryPin} decimals={false} max={4} />
           </div>
         )}
         <div className="row" style={{ justifyContent: 'center' }}>
-          <Link className="btn ghost" style={{ color: '#94a3b8' }} to={`/${tenant}/login`}>Back-office login</Link>
-          {err && !sel && <span className="bad">{err}</span>}
+          <Link className="btn ghost" style={{ color: '#94a3b8' }} to={`/${tenant}/login`}>{tr("Back-office login")}</Link>
+          {err && !sel && <span className="bad">{tr(err)}</span>}
           <button className="ghost" style={{ color: '#94a3b8' }} onClick={() => run(async () => { await reload(); })}>↻</button>
         </div>
       </div>

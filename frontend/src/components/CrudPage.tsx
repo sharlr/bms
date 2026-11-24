@@ -1,3 +1,4 @@
+import { useT as useTr } from '../i18n';
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import { api } from '../api';
 import { useSession } from '../session';
@@ -79,6 +80,7 @@ export function CrudPage({
   title: string; path: string; columns: Column[]; fields: Field[]; defaults?: Record<string, any>; canWrite?: boolean;
   toolbar?: ReactNode; rowActions?: (row: any, reload: () => void) => ReactNode; query?: string; deleteLabel?: string | null;
 }) {
+  const tr = useTr();
   const [rows, setRows] = useState<any[] | null>(null);
   const [edit, setEdit] = useState<any | null>(null);
   const run = useAction();
@@ -98,7 +100,7 @@ export function CrudPage({
       if (v === undefined) continue;
       body[f.key] = v;
     }
-    const r = await run(() => (isNew ? api.post(path, body) : api.patch(`${path}/${edit.id}`, body)), 'Saved');
+    const r = await run(() => (isNew ? api.post(path, body) : api.patch(`${path}/${edit.id}`, body)), tr("Saved"));
     if (r) { setEdit(null); load(); }
   };
 
@@ -110,7 +112,7 @@ export function CrudPage({
       const o = (f.options ?? opts[f.key]).find((x) => x.value === v);
       if (o) return o.label;
     }
-    if (typeof v === 'boolean') return v ? <span className="pill ok">Yes</span> : <span className="pill">No</span>;
+    if (typeof v === 'boolean') return v ? <span className="pill ok">{tr("Yes")}</span> : <span className="pill">{tr("No")}</span>;
     if (col.key === 'color' && typeof v === 'string') return <span className="pill" style={{ background: v, color: '#fff' }}>{v}</span>;
     return v ?? '';
   };
@@ -119,14 +121,14 @@ export function CrudPage({
     <div className="stack">
       <div className="row between">
         <h1>{title}</h1>
-        <div className="row">{toolbar}{canWrite && <button className="primary" onClick={() => setEdit({ ...defaults })}>+ New</button>}</div>
+        <div className="row">{toolbar}{canWrite && <button className="primary" onClick={() => setEdit({ ...defaults })}>{tr("+ New")}</button>}</div>
       </div>
       <div className="table-wrap">
         <table className="data">
           <thead><tr>{columns.map((c) => <th key={c.key} className={c.num ? 'num' : ''}>{c.label}</th>)}<th /></tr></thead>
           <tbody>
-            {rows === null && <tr><td colSpan={columns.length + 1} className="muted">Loading…</td></tr>}
-            {rows?.length === 0 && <tr><td colSpan={columns.length + 1} className="muted">Nothing here yet.</td></tr>}
+            {rows === null && <tr><td colSpan={columns.length + 1} className="muted">{tr("Loading…")}</td></tr>}
+            {rows?.length === 0 && <tr><td colSpan={columns.length + 1} className="muted">{tr("Nothing here yet.")}</td></tr>}
             {rows?.map((r) => (
               <tr key={r.id ?? JSON.stringify(r)} className={canWrite ? 'click' : ''} onClick={() => canWrite && setEdit({ ...r })}>
                 {columns.map((c) => <td key={c.key} className={c.num ? 'num' : ''}>{display(c, r)}</td>)}
@@ -135,8 +137,8 @@ export function CrudPage({
                     {rowActions?.(r, load)}
                     {canWrite && deleteLabel && r.active !== false && r.id && (
                       <button className="sm" onClick={async () => {
-                        if (!confirm(`${deleteLabel} this record?`)) return;
-                        if (await run(() => api.del(`${path}/${r.id}`), 'Done')) load();
+                        if (!confirm(tr("{0} this record?", deleteLabel))) return;
+                        if (await run(() => api.del(`${path}/${r.id}`), tr("Done"))) load();
                       }}>{deleteLabel}</button>
                     )}
                   </div>
@@ -151,8 +153,8 @@ export function CrudPage({
           <form onSubmit={(e) => { e.preventDefault(); save(); }} className="stack">
             <FormFields fields={fields} value={edit} onChange={setEdit} isNew={!edit.id} />
             <div className="row" style={{ justifyContent: 'flex-end' }}>
-              <button type="button" onClick={() => setEdit(null)}>Cancel</button>
-              <button type="submit" className="primary">Save</button>
+              <button type="button" onClick={() => setEdit(null)}>{tr("Cancel")}</button>
+              <button type="submit" className="primary">{tr("Save")}</button>
             </div>
           </form>
         </Modal>

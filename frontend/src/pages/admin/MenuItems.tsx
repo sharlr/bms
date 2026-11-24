@@ -1,3 +1,4 @@
+import { useT as useTr } from '../../i18n';
 import { useCallback, useEffect, useState } from 'react';
 import { api, getBranchId, getCompanyId, tenantSlug } from '../../api';
 import { Modal, useAction } from '../../components/ui';
@@ -30,6 +31,7 @@ async function uploadPhoto(itemId: number, photo: Blob) {
 
 /** Menu items with size variants, company default + per-branch price matrix, stock-impact toggle and modifiers. */
 export function MenuItems() {
+  const tr = useTr();
   const { can } = useSession();
   const [items, setItems] = useState<any[]>([]);
   const [cats, setCats] = useState<any[]>([]);
@@ -70,7 +72,7 @@ export function MenuItems() {
       const r = await run(() => api.post('/menu/items', {
         ...base, sizes: edit.sizes, modifier_group_ids: edit.modifier_group_ids,
         prices: edit.prices.filter((p: any) => p.price !== '').map((p: any) => ({ size_name: p.size_name || undefined, branch_id: p.branch_id, order_type: p.order_type ?? null, price: Number(p.price) })),
-      }), 'Item created');
+      }), tr("Item created"));
       if (r && edit.photo) await run(() => uploadPhoto(r.id, edit.photo));
       if (r) { setEdit(null); load(); }
       return;
@@ -82,7 +84,7 @@ export function MenuItems() {
       await api.put(`/menu/items/${edit.id}/prices`, edit.prices.filter((p: any) => p.price !== '' && p.price !== null).map((p: any) => ({ size_id: p.size_id ?? null, branch_id: p.branch_id ?? null, order_type: p.order_type ?? null, price: Number(p.price) })));
       await api.put(`/menu/items/${edit.id}/modifier-groups`, edit.modifier_group_ids);
       return true;
-    }, 'Item saved');
+    }, tr("Item saved"));
     if (ok) { setEdit(null); load(); }
   };
 
@@ -92,39 +94,38 @@ export function MenuItems() {
 
   return (
     <div className="stack">
-      <div className="row between"><h1>Items, Sizes & Prices</h1>{write && <button className="primary" onClick={openNew}>+ New item</button>}</div>
+      <div className="row between"><h1>{tr("Items, Sizes & Prices")}</h1>{write && <button className="primary" onClick={openNew}>{tr("+ New item")}</button>}</div>
       <div className="row"><select style={{ maxWidth: 260 }} value={cat} onChange={(e) => setCat(e.target.value ? Number(e.target.value) : '')}>
-        <option value="">All categories</option>{cats.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</select></div>
+        <option value="">{tr("All categories")}</option>{cats.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</select></div>
       <div className="table-wrap"><table className="data">
-        <thead><tr><th>Item</th><th>Category</th><th>Sizes</th><th>Prices</th><th>Kitchen / bar</th><th>Stock impact</th><th>Online</th><th>Active</th></tr></thead>
+        <thead><tr><th>{tr("Item")}</th><th>{tr("Category")}</th><th>{tr("Sizes")}</th><th>{tr("Prices")}</th><th>{tr("Kitchen / bar")}</th><th>{tr("Stock impact")}</th><th>{tr("Online")}</th><th>{tr("Active")}</th></tr></thead>
         <tbody>{shown.map((i) => (
           <tr key={i.id} className="click" onClick={() => write && openEdit(i)}>
             <td><div className="row nowrap">{i.image_url ? <img className="thumb" style={{ width: 44, height: 44 }} src={i.image_url} alt="" /> : <span style={{ width: 44 }} />}<b>{i.name}</b></div></td>
             <td>{cats.find((c) => c.id === i.category_id)?.name}</td>
             <td>{i.sizes.map((s: any) => s.name).join(', ') || '—'}</td>
-            <td className="small">{i.prices.map((p: any) => `${i.sizes.find((s: any) => s.id === p.size_id)?.name ?? ''} ${branches.find((b) => b.id === p.branch_id)?.code ?? 'default'}${p.order_type ? ' ' + ORDER_TYPES[p.order_type] : ''}: ${fmt(p.price)}`).join(' · ')}</td>
-            <td>{i.no_kot ? 'No ticket' : stations.find((s) => s.id === i.station_id)?.name ?? <span className="muted">category</span>}</td>
-            <td>{i.tracks_stock ? <span className="pill ok">Deducts stock</span> : <span className="pill">No</span>}</td>
-            <td>{i.available_online ? '✓' : ''}</td><td>{i.active ? '✓' : <span className="pill">inactive</span>}</td>
+            <td className="small">{i.prices.map((p: any) => `${i.sizes.find((s: any) => s.id === p.size_id)?.name ?? ''} ${branches.find((b) => b.id === p.branch_id)?.code ?? 'default'}${p.order_type ? ' ' + tr(ORDER_TYPES[p.order_type]) : ''}: ${fmt(p.price)}`).join(' · ')}</td>
+            <td>{i.no_kot ? tr("No ticket") : stations.find((s) => s.id === i.station_id)?.name ?? <span className="muted">{tr("category")}</span>}</td>
+            <td>{i.tracks_stock ? <span className="pill ok">{tr("Deducts stock")}</span> : <span className="pill">{tr("No")}</span>}</td>
+            <td>{i.available_online ? '✓' : ''}</td><td>{i.active ? '✓' : <span className="pill">{tr("inactive")}</span>}</td>
           </tr>
         ))}</tbody></table></div>
 
       {edit && (
-        <Modal title={edit.id ? edit.name : 'New menu item'} onClose={() => setEdit(null)} wide>
+        <Modal title={edit.id ? edit.name : tr("New menu item")} onClose={() => setEdit(null)} wide>
           <div className="stack">
             <div className="grid2">
-              <label className="field">Name *<input value={edit.name} onChange={(e) => setEdit({ ...edit, name: e.target.value })} /></label>
-              <label className="field">Category<select value={edit.category_id} onChange={(e) => setEdit({ ...edit, category_id: Number(e.target.value) })}>{cats.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</select></label>
-              <label className="field">Prepared in (kitchen / bar)<select value={edit.route} onChange={(e) => setEdit({ ...edit, route: e.target.value === '' || e.target.value === 'none' ? e.target.value : Number(e.target.value) })}>
-                <option value="">Same as its category</option>{stations.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}<option value="none">No kitchen ticket</option></select></label>
-              <label className="field">Allergens (comma separated)<input value={edit.allergens} onChange={(e) => setEdit({ ...edit, allergens: e.target.value })} /></label>
-              <div className="field">Photo
-                <div className="row nowrap">
+              <label className="field">{tr("Name *")}<input value={edit.name} onChange={(e) => setEdit({ ...edit, name: e.target.value })} /></label>
+              <label className="field">{tr("Category")}<select value={edit.category_id} onChange={(e) => setEdit({ ...edit, category_id: Number(e.target.value) })}>{cats.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</select></label>
+              <label className="field">{tr("Prepared in (kitchen / bar)")}<select value={edit.route} onChange={(e) => setEdit({ ...edit, route: e.target.value === '' || e.target.value === 'none' ? e.target.value : Number(e.target.value) })}>
+                <option value="">{tr("Same as its category")}</option>{stations.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}<option value="none">{tr("No kitchen ticket")}</option></select></label>
+              <label className="field">{tr("Allergens (comma separated)")}<input value={edit.allergens} onChange={(e) => setEdit({ ...edit, allergens: e.target.value })} /></label>
+              <div className="field">{tr("Photo")}<div className="row nowrap">
                   {(edit.photoPreview ?? (!edit.removePhoto && edit.image_url))
-                    ? <img src={edit.photoPreview ?? edit.image_url} alt={`Photo of ${edit.name || 'item'}`} style={{ width: 72, height: 72, objectFit: 'cover', borderRadius: 8, border: '1px solid var(--line)' }} />
+                    ? <img src={edit.photoPreview ?? edit.image_url} alt={tr("Photo of {0}", edit.name || 'item')} style={{ width: 72, height: 72, objectFit: 'cover', borderRadius: 8, border: '1px solid var(--line)' }} />
                     : <div style={{ width: 72, height: 72, borderRadius: 8, background: '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center' }} aria-hidden>📷</div>}
                   <label className="btn sm" style={{ cursor: 'pointer' }}>
-                    {edit.photoPreview || edit.image_url ? 'Change photo' : 'Upload photo'}
+                    {edit.photoPreview || edit.image_url ? tr("Change photo") : tr("Upload photo")}
                     <input type="file" accept="image/jpeg,image/png,image/webp" hidden onChange={async (e) => {
                       const f = e.target.files?.[0];
                       if (!f) return;
@@ -133,66 +134,66 @@ export function MenuItems() {
                     }} />
                   </label>
                   {(edit.photoPreview || (edit.image_url && !edit.removePhoto)) && (
-                    <button type="button" className="sm" onClick={() => setEdit({ ...edit, photo: null, photoPreview: null, removePhoto: true })}>Remove</button>
+                    <button type="button" className="sm" onClick={() => setEdit({ ...edit, photo: null, photoPreview: null, removePhoto: true })}>{tr("Remove")}</button>
                   )}
                 </div>
               </div>
-              <label className="field">Sort<input type="number" value={edit.sort} onChange={(e) => setEdit({ ...edit, sort: e.target.value })} /></label>
+              <label className="field">{tr("Sort")}<input type="number" value={edit.sort} onChange={(e) => setEdit({ ...edit, sort: e.target.value })} /></label>
             </div>
-            <label className="field">Description<textarea value={edit.description ?? ''} onChange={(e) => setEdit({ ...edit, description: e.target.value })} /></label>
+            <label className="field">{tr("Description")}<textarea value={edit.description ?? ''} onChange={(e) => setEdit({ ...edit, description: e.target.value })} /></label>
             <div className="row">
               <label className="check card" style={{ padding: '.6rem' }}><input type="checkbox" checked={edit.tracks_stock} onChange={(e) => setEdit({ ...edit, tracks_stock: e.target.checked })} />
-                <span><b>Deduct stock when ordered</b><br /><span className="small muted">Ingredients from the recipe are subtracted from branch stock on order confirmation</span></span></label>
-              <label className="check"><input type="checkbox" checked={edit.available_online} onChange={(e) => setEdit({ ...edit, available_online: e.target.checked })} /> Show on QR / online menu</label>
-              <label className="check"><input type="checkbox" checked={edit.active} onChange={(e) => setEdit({ ...edit, active: e.target.checked })} /> Active</label>
+                <span><b>{tr("Deduct stock when ordered")}</b><br /><span className="small muted">{tr("Ingredients from the recipe are subtracted from branch stock on order confirmation")}</span></span></label>
+              <label className="check"><input type="checkbox" checked={edit.available_online} onChange={(e) => setEdit({ ...edit, available_online: e.target.checked })} /> {tr(" Show on QR / online menu")}</label>
+              <label className="check"><input type="checkbox" checked={edit.active} onChange={(e) => setEdit({ ...edit, active: e.target.checked })} /> {tr(" Active")}</label>
             </div>
 
-            <h3>Sizes</h3>
+            <h3>{tr("Sizes")}</h3>
             {!edit.id ? (
               <div className="row">
                 {edit.sizes.map((s: string) => <span key={s} className="pill">{s} <a href="#" onClick={(e) => { e.preventDefault(); setEdit({ ...edit, sizes: edit.sizes.filter((x: string) => x !== s), prices: edit.prices.filter((p: any) => p.size_name !== s) }); }}>✕</a></span>)}
-                <button className="sm" onClick={() => { const s = prompt('Size name (e.g. Small, Medium, Large)'); if (s && !edit.sizes.includes(s)) setEdit({ ...edit, sizes: [...edit.sizes, s], prices: [...edit.prices.filter((p: any) => p.size_name), { size_name: s, branch_id: null, price: '' }] }); }}>+ Size</button>
-                {[['Small', 'Medium', 'Large']].map((preset) => <button key="p" className="sm" onClick={() => setEdit({ ...edit, sizes: preset, prices: preset.map((s) => ({ size_name: s, branch_id: null, price: '' })) })}>S / M / L</button>)}
+                <button className="sm" onClick={() => { const s = prompt(tr("Size name (e.g. Small, Medium, Large)")); if (s && !edit.sizes.includes(s)) setEdit({ ...edit, sizes: [...edit.sizes, s], prices: [...edit.prices.filter((p: any) => p.size_name), { size_name: s, branch_id: null, price: '' }] }); }}>{tr("+ Size")}</button>
+                {[['Small', 'Medium', 'Large']].map((preset) => <button key="p" className="sm" onClick={() => setEdit({ ...edit, sizes: preset, prices: preset.map((s) => ({ size_name: s, branch_id: null, price: '' })) })}>{tr("S / M / L")}</button>)}
               </div>
             ) : (
               <div className="row">
                 {edit.sizes.map((s: any) => <span key={s.id} className="pill">{s.name}</span>)}
                 <button className="sm" onClick={async () => {
-                  const name = prompt('New size name'); if (!name) return;
+                  const name = prompt(tr("New size name")); if (!name) return;
                   const s = await run(() => api.post('/menu/sizes', { item_id: edit.id, name, sort: edit.sizes.length }));
                   if (s) setEdit({ ...edit, sizes: [...edit.sizes, s] });
-                }}>+ Size</button>
+                }}>{tr("+ Size")}</button>
               </div>
             )}
 
-            <h3>Prices (company default + branch overrides, per order type)</h3>
-            <p className="small muted">Most specific price wins: branch + order type › branch › company + order type › company “All”.</p>
+            <h3>{tr("Prices (company default + branch overrides, per order type)")}</h3>
+            <p className="small muted">{tr("Most specific price wins: branch + order type › branch › company + order type › company “All”.")}</p>
             <table className="data">
-              <thead><tr><th>Size</th><th>Branch</th><th>Order type</th><th className="num">Price</th><th /></tr></thead>
+              <thead><tr><th>{tr("Size")}</th><th>{tr("Branch")}</th><th>{tr("Order type")}</th><th className="num">{tr("Price")}</th><th /></tr></thead>
               <tbody>{edit.prices.map((p: any, i: number) => (
                 <tr key={i}>
                   <td>{sizeOptions.length ? <select value={p[priceKey] ?? ''} onChange={(e) => setEdit({ ...edit, prices: edit.prices.map((x: any, j: number) => (j === i ? { ...x, [priceKey]: edit.id ? Number(e.target.value) : e.target.value } : x)) })}>
                     {sizeOptions.map((s: any) => <option key={s.key} value={s.key}>{s.label}</option>)}</select> : <span className="muted">—</span>}</td>
                   <td><select value={p.branch_id ?? ''} onChange={(e) => setEdit({ ...edit, prices: edit.prices.map((x: any, j: number) => (j === i ? { ...x, branch_id: e.target.value ? Number(e.target.value) : null } : x)) })}>
-                    <option value="">Company default (all branches)</option>
+                    <option value="">{tr("Company default (all branches)")}</option>
                     {companyBranches(branches.find((b) => b.id === p.branch_id)?.company_id ?? branches[0]?.company_id).map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}</select></td>
                   <td><select value={p.order_type ?? ''} onChange={(e) => setEdit({ ...edit, prices: edit.prices.map((x: any, j: number) => (j === i ? { ...x, order_type: e.target.value || null } : x)) })}>
-                    <option value="">All order types</option><option value="dine_in">Dine-in</option><option value="takeaway">Takeaway</option><option value="delivery">Delivery</option></select></td>
+                    <option value="">{tr("All order types")}</option><option value="dine_in">{tr("Dine-in")}</option><option value="takeaway">{tr("Takeaway")}</option><option value="delivery">{tr("Delivery")}</option></select></td>
                   <td><input type="number" step="any" value={p.price} onChange={(e) => setEdit({ ...edit, prices: edit.prices.map((x: any, j: number) => (j === i ? { ...x, price: e.target.value } : x)) })} /></td>
                   <td><button className="sm" onClick={() => setEdit({ ...edit, prices: edit.prices.filter((_: any, j: number) => j !== i) })}>✕</button></td>
                 </tr>
               ))}</tbody>
             </table>
-            <button className="sm" onClick={() => setEdit({ ...edit, prices: [...edit.prices, { [priceKey]: sizeOptions[0]?.key ?? null, branch_id: null, price: '' }] })}>+ Price row</button>
+            <button className="sm" onClick={() => setEdit({ ...edit, prices: [...edit.prices, { [priceKey]: sizeOptions[0]?.key ?? null, branch_id: null, price: '' }] })}>{tr("+ Price row")}</button>
 
-            <h3>Modifier groups</h3>
+            <h3>{tr("Modifier groups")}</h3>
             <div className="row">{groups.map((g) => (
               <label key={g.id} className="check"><input type="checkbox" checked={edit.modifier_group_ids.includes(g.id)}
                 onChange={(e) => setEdit({ ...edit, modifier_group_ids: e.target.checked ? [...edit.modifier_group_ids, g.id] : edit.modifier_group_ids.filter((x: number) => x !== g.id) })} /> {g.name}</label>
             ))}</div>
             <div className="row" style={{ justifyContent: 'flex-end' }}>
-              <button onClick={() => setEdit(null)}>Cancel</button>
-              <button className="primary" disabled={!edit.name} onClick={save}>Save</button>
+              <button onClick={() => setEdit(null)}>{tr("Cancel")}</button>
+              <button className="primary" disabled={!edit.name} onClick={save}>{tr("Save")}</button>
             </div>
           </div>
         </Modal>

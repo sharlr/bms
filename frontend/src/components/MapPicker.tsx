@@ -1,3 +1,4 @@
+import { useT as useTr } from '../i18n';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { useEffect, useRef, useState } from 'react';
@@ -12,6 +13,7 @@ const round6 = (n: number) => Math.round(n * 1e6) / 1e6;
 export function MapPicker({ value, onChange, center, height = 300 }: {
   value: LatLng | null; onChange: (v: LatLng) => void; center?: LatLng | null; height?: number;
 }) {
+  const tr = useTr();
   const el = useRef<HTMLDivElement>(null);
   const map = useRef<L.Map | null>(null);
   const marker = useRef<L.Marker | null>(null);
@@ -22,7 +24,7 @@ export function MapPicker({ value, onChange, center, height = 300 }: {
   const place = (p: LatLng, pan = false) => {
     if (!map.current) return;
     if (!marker.current) {
-      marker.current = L.marker(p, { icon: pin, draggable: true, keyboard: true, title: 'Delivery location' }).addTo(map.current);
+      marker.current = L.marker(p, { icon: pin, draggable: true, keyboard: true, title: tr("Delivery location") }).addTo(map.current);
       marker.current.on('dragend', () => { const ll = marker.current!.getLatLng(); cb.current({ lat: round6(ll.lat), lng: round6(ll.lng) }); });
     } else marker.current.setLatLng(p);
     if (pan) map.current.setView(p, Math.max(map.current.getZoom(), 16));
@@ -55,10 +57,10 @@ export function MapPicker({ value, onChange, center, height = 300 }: {
 
   return (
     <div className="stack" style={{ gap: '.4rem' }}>
-      <div ref={el} style={{ height, borderRadius: 10, border: '1px solid var(--line)', zIndex: 0 }} role="application" aria-label="Map: tap to choose the delivery location" />
+      <div ref={el} style={{ height, borderRadius: 10, border: '1px solid var(--line)', zIndex: 0 }} role="application" aria-label={tr("Map: tap to choose the delivery location")} />
       <div className="row between small">
-        <span className={value ? 'ok' : 'muted'}>{value ? `📍 Location set (${value.lat.toFixed(5)}, ${value.lng.toFixed(5)})` : 'Tap the map to drop the pin on the delivery location.'}</span>
-        <button type="button" className="sm" onClick={locate} disabled={locating}>{locating ? 'Locating…' : '📍 Use my location'}</button>
+        <span className={value ? 'ok' : 'muted'}>{value ? tr("📍 Location set ({0}, {1})", value.lat.toFixed(5), value.lng.toFixed(5)) : tr("Tap the map to drop the pin on the delivery location.")}</span>
+        <button type="button" className="sm" onClick={locate} disabled={locating}>{locating ? tr("Locating…") : tr("📍 Use my location")}</button>
       </div>
     </div>
   );

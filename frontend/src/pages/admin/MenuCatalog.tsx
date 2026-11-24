@@ -1,3 +1,4 @@
+import { useT as useTr } from '../../i18n';
 import { useEffect, useState } from 'react';
 import { api } from '../../api';
 import { Loading } from '../../components/ui';
@@ -8,6 +9,7 @@ const TYPES = ['dine_in', 'takeaway', 'delivery'] as const;
 
 /** Read-only menu overview for the active branch: the price each order type actually charges (same resolution as the POS). */
 export function MenuCatalog() {
+  const tr = useTr();
   const { currency } = useSession();
   const [menus, setMenus] = useState<Record<string, any> | null>(null);
   const [cat, setCat] = useState<number | ''>('');
@@ -29,19 +31,19 @@ export function MenuCatalog() {
   return (
     <div className="stack">
       <div className="row between">
-        <h1>Menu Overview</h1>
+        <h1>{tr("Menu Overview")}</h1>
         <select style={{ maxWidth: 260 }} value={cat} onChange={(e) => setCat(e.target.value ? Number(e.target.value) : '')}>
-          <option value="">All categories</option>
+          <option value="">{tr("All categories")}</option>
           {base.categories.map((c: any) => <option key={c.id} value={c.id}>{c.name}</option>)}
         </select>
       </div>
-      <p className="muted small">Prices for the branch selected in the top bar ({currency}). Edit them under Menu → Items, Sizes &amp; Prices.</p>
+      <p className="muted small">{tr("Prices for the branch selected in the top bar (")}{currency}{tr("). Edit them under Menu → Items, Sizes & Prices.")}</p>
       {categories.map((c: any) => (
         <div key={c.id} className="card stack">
           <h2 style={{ borderLeft: `6px solid ${c.color}`, paddingLeft: '.5rem' }}>{c.name}</h2>
           <div className="table-wrap">
             <table className="data">
-              <thead><tr><th /><th>Item</th><th>Size</th>{TYPES.map((t) => <th key={t} className="num">{ORDER_TYPES[t]}</th>)}</tr></thead>
+              <thead><tr><th /><th>{tr("Item")}</th><th>{tr("Size")}</th>{TYPES.map((t) => <th key={t} className="num">{tr(ORDER_TYPES[t])}</th>)}</tr></thead>
               <tbody>
                 {[...items.values()].filter((i) => i.category_id === c.id).flatMap((i) => {
                   const sizes: (any | null)[] = i.sizes.length ? i.sizes : [null];
@@ -50,9 +52,9 @@ export function MenuCatalog() {
                       {n === 0 && <td rowSpan={sizes.length} style={{ width: 84 }}>{i.image_url ? <img className="thumb" src={i.image_url} alt={i.name} /> : <div className="thumb" style={{ background: '#e2e8f0' }} />}</td>}
                       {n === 0 && <td rowSpan={sizes.length}><b>{i.name}</b>
                         {i.description && <div className="small muted">{i.description}</div>}
-                        {i.allergens?.length > 0 && <div className="small warn">Allergens: {i.allergens.join(', ')}</div>}</td>}
+                        {i.allergens?.length > 0 && <div className="small warn">{tr("Allergens: ")}{i.allergens.join(', ')}</div>}</td>}
                       <td>{s?.name ?? '—'}</td>
-                      {TYPES.map((t) => { const p = priceOf(t, i.id, s?.id ?? null); return <td key={t} className="num">{p == null ? <span className="muted">n/a</span> : fmt(p)}</td>; })}
+                      {TYPES.map((t) => { const p = priceOf(t, i.id, s?.id ?? null); return <td key={t} className="num">{p == null ? <span className="muted">{tr("n/a")}</span> : fmt(p)}</td>; })}
                     </tr>
                   ));
                 })}
@@ -61,7 +63,7 @@ export function MenuCatalog() {
           </div>
         </div>
       ))}
-      {categories.length === 0 && <div className="card muted">No priced items yet.</div>}
+      {categories.length === 0 && <div className="card muted">{tr("No priced items yet.")}</div>}
     </div>
   );
 }

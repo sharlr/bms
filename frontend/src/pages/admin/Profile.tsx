@@ -1,3 +1,4 @@
+import { useT as useTr } from '../../i18n';
 import { useState } from 'react';
 import { api } from '../../api';
 import { useAction } from '../../components/ui';
@@ -5,6 +6,7 @@ import { LANGUAGES, THEMES, useT } from '../../i18n';
 import { LANDING_PAGES, useSession } from '../../session';
 
 export function Profile() {
+  const tr = useTr();
   const { me, reload } = useSession();
   const t = useT();
   const run = useAction();
@@ -23,14 +25,14 @@ export function Profile() {
         </div>
         <div className="grow">
           <h2 style={{ margin: 0 }}>{u.full_name}</h2>
-          <div className="muted small">{t('Username')}: {u.username} · {t('Role')}: {u.role_name}{u.is_tenant_admin ? ' · Tenant admin' : ''}</div>
+          <div className="muted small">{t('Username')}: {u.username} · {t('Role')}: {u.role_name}{u.is_tenant_admin ? tr(" · Tenant admin") : ''}</div>
         </div>
       </div>
 
       <div className="card stack">
         <h2>{t('Preferences')}</h2>
         <form className="row" onSubmit={(e) => { e.preventDefault(); save({ position }); }}>
-          <label className="field grow">{t('Position')}<input value={position} maxLength={80} onChange={(e) => setPosition(e.target.value)} placeholder="e.g. Restaurant Manager" /></label>
+          <label className="field grow">{t('Position')}<input value={position} maxLength={80} onChange={(e) => setPosition(e.target.value)} placeholder={tr("e.g. Restaurant Manager")} /></label>
           <button className="primary" style={{ alignSelf: 'flex-end' }}>{t('Save')}</button>
         </form>
         <label className="field">{t('Landing page after sign-in')}
@@ -42,7 +44,7 @@ export function Profile() {
           <div className="row">
             {THEMES.map((th) => (
               <button key={th.code} className={u.theme === th.code ? 'dark' : ''} aria-pressed={u.theme === th.code} onClick={() => save({ theme: th.code })}>
-                <span className="swatch" style={{ background: th.swatch }} /> {th.label}
+                <span className="swatch" style={{ background: th.swatch }} /> {tr(th.label)}
               </button>
             ))}
           </div>
@@ -69,7 +71,7 @@ export function Profile() {
           <label className="field">{t('New password')}<input type="password" autoComplete="new-password" value={pw.next} onChange={(e) => setPw({ ...pw, next: e.target.value })} /></label>
           <label className="field">{t('Confirm new password')}<input type="password" autoComplete="new-password" value={pw.confirm} onChange={(e) => setPw({ ...pw, confirm: e.target.value })} /></label>
         </div>
-        <span className="small muted">10+ characters with upper case, lower case and a digit. Other sessions are signed out.</span>
+        <span className="small muted">{tr("10+ characters with upper case, lower case and a digit. Other sessions are signed out.")}</span>
         <div><button className="primary" disabled={!pw.next}>{t('Change password')}</button></div>
       </form>
 

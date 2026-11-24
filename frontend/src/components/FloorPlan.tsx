@@ -1,3 +1,4 @@
+import { useT as useTr } from '../i18n';
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 
 export interface PlanItem { id: string; kind: string; x: number; y: number; w: number; h: number; label?: string; color?: string }
@@ -17,6 +18,7 @@ export const KINDS: Record<string, { name: string; icon: string; w: number; h: n
 };
 
 export function Decor({ d, selected, onPointerDown }: { d: PlanItem; selected?: boolean; onPointerDown?: (e: React.PointerEvent) => void }) {
+  const tr = useTr();
   const k = KINDS[d.kind] ?? KINDS.text;
   const big = Math.min(d.w, d.h) >= 24;
   return (
@@ -27,7 +29,7 @@ export function Decor({ d, selected, onPointerDown }: { d: PlanItem; selected?: 
         outline: selected ? '3px solid var(--brand)' : undefined, outlineOffset: 2, cursor: onPointerDown ? 'move' : 'default',
         ...(d.kind === 'room' ? { alignItems: 'flex-start', justifyContent: 'flex-start', padding: 6 } : {}),
       }}>
-      {big && (d.label ?? (d.kind === 'text' ? 'Label' : `${k.icon} ${k.name}`))}
+      {big && (d.label ?? (d.kind === 'text' ? tr("Label") : `${k.icon} ${tr(k.name)}`))}
     </div>
   );
 }

@@ -4,7 +4,8 @@ import { createBrowserRouter, Outlet, RouterProvider, useParams } from 'react-ro
 import { Loading, OverrideProvider, ToastProvider } from './components/ui';
 import { Landing, Login, TenantHome, Terminal } from './pages/Auth';
 import { CustomerOrder, ReservationStatus, Reserve, SandboxPay, Track } from './pages/Customer';
-import { SessionProvider } from './session';
+import { SessionProvider, useSession } from './session';
+import { LangProvider, LangSwitch } from './i18n';
 import './styles.css';
 const Pos = lazy(() => import('./pages/Pos').then((m) => ({ default: m.Pos })));
 const Platform = lazy(() => import('./pages/Platform').then((m) => ({ default: m.Platform })));
@@ -22,12 +23,19 @@ function ErrorScreen() {
   );
 }
 
+// Screens used without signing in (login, PIN terminal, kiosk, customer ordering) get a floating language picker.
+function GuestLang() {
+  const { me } = useSession();
+  return me?.user ? null : <div className="no-print" style={{ position: 'fixed', top: 10, right: 10, zIndex: 60 }}><LangSwitch /></div>;
+}
+
 function TenantRoot() {
   const { tenant } = useParams();
   return (
     <SessionProvider key={tenant}>
       <OverrideProvider>
         <Outlet />
+        <GuestLang />
       </OverrideProvider>
     </SessionProvider>
   );
@@ -35,7 +43,7 @@ function TenantRoot() {
 
 const router = createBrowserRouter([
   { path: '/', element: <Landing />, errorElement: <ErrorScreen /> },
-  { path: '/platform', element: <Platform /> },
+  { path: '/platform', element: <><Platform /><div style={{ position: 'fixed', top: 10, right: 10, zIndex: 60 }}><LangSwitch /></div></> },
   {
     path: '/:tenant',
     element: <TenantRoot />,
@@ -60,8 +68,10 @@ const router = createBrowserRouter([
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <ToastProvider>
-      <Suspense fallback={<Loading />}><RouterProvider router={router} /></Suspense>
-    </ToastProvider>
+    <LangProvider>
+      <ToastProvider>
+        <Suspense fallback={<Loading />}><RouterProvider router={router} /></Suspense>
+      </ToastProvider>
+    </LangProvider>
   </StrictMode>,
 );

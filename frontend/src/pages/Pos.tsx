@@ -1,3 +1,4 @@
+import { useT as useTr } from '../i18n';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, Navigate, useNavigate, useParams } from 'react-router-dom';
 import { api } from '../api';
@@ -15,6 +16,7 @@ import { fmt, fmtQty, ORDER_TYPES, time, today, todayLocal } from '../util';
 type View = { kind: 'floor' } | { kind: 'order'; id: number } | { kind: 'orders' };
 
 export function Pos() {
+  const tr = useTr();
   const { me, loading, branchId, can, currency, reload } = useSession();
   const { tenant } = useParams();
   const nav = useNavigate();
@@ -44,29 +46,29 @@ export function Pos() {
   }, []);
   useEffect(() => { if (me?.user) refreshBookings(); }, [me, refreshBookings]);
   useBranchEvents(branchId, ['reservation:new', 'reservation:changed', 'tables:changed'], (e, d) => {
-    if (e === 'reservation:new') toast(`📅 New reservation: ${d.customer_name}, ${d.pax} guest(s) on ${d.date} at ${d.time}`);
+    if (e === 'reservation:new') toast(tr("📅 New reservation: {0}, {1} guest(s) on {2} at {3}", d.customer_name, d.pax, d.date, d.time));
     refreshBookings();
   });
   useBranchEvents(branchId, ['order:new', 'stock:low', 'order:ready', 'order:paid'], (e, d) => {
-    if (e === 'order:new') { toast(`New ${d.source.toUpperCase()} order ${d.ticket_ref}${d.table ? ' · table ' + d.table : ''}`); refreshPending(); }
-    if (e === 'stock:low') toast(`Low stock: ${d.name} (${fmtQty(d.qty)} ${d.unit})`, true);
-    if (e === 'order:paid') { toast(`💳 Order ${d.ticket_ref} paid online (${fmt(d.amount)})`); refreshPending(); }
+    if (e === 'order:new') { toast(tr("New {0} order {1}{2}", d.source.toUpperCase(), d.ticket_ref, d.table ? ' · table ' + d.table : '')); refreshPending(); }
+    if (e === 'stock:low') toast(tr("Low stock: {0} ({1} {2})", d.name, fmtQty(d.qty), d.unit), true);
+    if (e === 'order:paid') { toast(tr("💳 Order {0} paid online ({1})", d.ticket_ref, fmt(d.amount))); refreshPending(); }
     if (e === 'order:ready') {
-      toast(`🔔 Order ready: ${d.ticket_ref}${d.table_name ? ' · Table ' + d.table_name : d.customer_name ? ' · ' + d.customer_name : ''}`);
+      toast(tr("🔔 Order ready: {0}{1}", d.ticket_ref, d.table_name ? ' · Table ' + d.table_name : d.customer_name ? ' · ' + d.customer_name : ''));
       setReady((r) => [d, ...r.filter((x) => x.ticket_id !== d.ticket_id)]);
     }
   });
 
   const print = async (ticketId: number) => {
     const r = await api.post('/pos/tickets/' + ticketId + '/print-receipt', {}).catch(() => ({ browser: true }));
-    if (!r.browser) return toast('Receipt sent to printer');
+    if (!r.browser) return toast(tr("Receipt sent to printer"));
     setPrintData(await api.get(`/pos/tickets/${ticketId}/receipt`));
     setTimeout(() => { window.print(); setPrintData(null); }, 150);
   };
 
   if (loading) return <Loading />;
   if (!me?.user) return <Navigate to={`/${tenant}`} replace />;
-  if (!can('pos.access')) return <div className="card">You do not have POS access.</div>;
+  if (!can('pos.access')) return <div className="card">{tr("You do not have POS access.")}</div>;
 
   // Registered terminals go back to the PIN screen; a normal browser goes back to the login page.
   const logout = async () => { const m = await api.post('/auth/logout', {}).then(reload); nav(`/${tenant}/${m?.device ? 'terminal' : 'login'}`); };
@@ -74,16 +76,16 @@ export function Pos() {
   return (
     <div className="app">
       <AppBar onLock={logout} right={<>
-        {ready.length > 0 && <button className="primary ready-bell" onClick={() => setShowReady(true)}>🔔 {ready.length} ready</button>}
-        <button onClick={() => setShowBookings(true)}>📅 Bookings{bookings > 0 ? ` (${bookings})` : ''}</button>
-        {day ? <span className="day-pill">● Day open · fund {fmt(day.opening_float)}</span>
-          : day === null && can('pos.register') && <button className="primary" onClick={() => setAskDay(true)}>Open day</button>}
-        {can('kds.view') && <Link className="btn" to={`/${tenant}/kds`}>👨‍🍳 KDS</Link>}
+        {ready.length > 0 && <button className="primary ready-bell" onClick={() => setShowReady(true)}>🔔 {ready.length} {tr(" ready")}</button>}
+        <button onClick={() => setShowBookings(true)}>{tr("📅 Bookings")}{bookings > 0 ? ` (${bookings})` : ''}</button>
+        {day ? <span className="day-pill">{tr("● Day open · fund ")}{fmt(day.opening_float)}</span>
+          : day === null && can('pos.register') && <button className="primary" onClick={() => setAskDay(true)}>{tr("Open day")}</button>}
+        {can('kds.view') && <Link className="btn" to={`/${tenant}/kds`}>{tr("👨‍🍳 KDS")}</Link>}
       </>}>
-        <button className={view.kind === 'floor' ? 'active' : ''} onClick={() => setView({ kind: 'floor' })}>🪑 Floor plan</button>
-        <button onClick={() => setNewOrder(true)}>🛍️ Takeaway / Delivery</button>
+        <button className={view.kind === 'floor' ? 'active' : ''} onClick={() => setView({ kind: 'floor' })}>{tr("🪑 Floor plan")}</button>
+        <button onClick={() => setNewOrder(true)}>{tr("🛍️ Takeaway / Delivery")}</button>
         <button className={view.kind === 'orders' ? 'active' : ''} onClick={() => setView({ kind: 'orders' })}>
-          🧾 Orders {pendingCount > 0 && <span className="pill bad">{pendingCount} new</span>}
+          {tr("🧾 Orders ")}{pendingCount > 0 && <span className="pill bad">{pendingCount} {tr(" new")}</span>}
         </button>
       </AppBar>
       <div className="app-body no-print">
@@ -95,23 +97,23 @@ export function Pos() {
       {newOrder && <NewOrderModal onClose={() => setNewOrder(false)} onCreated={(id) => { setNewOrder(false); setView({ kind: 'order', id }); }} />}
       {printData && <div className="printable"><Receipt data={printData} /></div>}
       {showBookings && (
-        <Modal title="📅 Today's reservations" onClose={() => setShowBookings(false)} wide>
+        <Modal title={tr("📅 Today's reservations")} onClose={() => setShowBookings(false)} wide>
           <ReservationsPanel from={todayLocal()} to={todayLocal()} onSeated={(id) => { setShowBookings(false); setView({ kind: 'order', id }); }} />
         </Modal>
       )}
       {showReady && (
-        <Modal title="🔔 Orders ready to serve" onClose={() => setShowReady(false)}>
+        <Modal title={tr("🔔 Orders ready to serve")} onClose={() => setShowReady(false)}>
           <div className="stack">
             {ready.map((r) => (
               <div key={r.ticket_id} className="row between card" style={{ padding: '.6rem' }}>
-                <div><b>{r.ticket_ref}</b> · {r.table_name ? `Table ${r.table_name}` : ORDER_TYPES[r.order_type]}{r.customer_name ? ` · ${r.customer_name}` : ''}</div>
+                <div><b>{r.ticket_ref}</b> · {r.table_name ? tr("Table {0}", r.table_name) : tr(ORDER_TYPES[r.order_type])}{r.customer_name ? ` · ${r.customer_name}` : ''}</div>
                 <div className="row">
-                  <button className="primary" onClick={() => { setShowReady(false); setReady((x) => x.filter((y) => y.ticket_id !== r.ticket_id)); setView({ kind: 'order', id: r.ticket_id }); }}>Open</button>
-                  <button onClick={() => setReady((x) => x.filter((y) => y.ticket_id !== r.ticket_id))}>Done</button>
+                  <button className="primary" onClick={() => { setShowReady(false); setReady((x) => x.filter((y) => y.ticket_id !== r.ticket_id)); setView({ kind: 'order', id: r.ticket_id }); }}>{tr("Open")}</button>
+                  <button onClick={() => setReady((x) => x.filter((y) => y.ticket_id !== r.ticket_id))}>{tr("Done")}</button>
                 </div>
               </div>
             ))}
-            {ready.length === 0 && <p className="muted">Nothing waiting.</p>}
+            {ready.length === 0 && <p className="muted">{tr("Nothing waiting.")}</p>}
           </div>
         </Modal>
       )}
@@ -122,6 +124,7 @@ export function Pos() {
 
 // ---------------- Floor plan ----------------
 function FloorView({ onOpen }: { onOpen: (id: number) => void }) {
+  const tr = useTr();
   const { branchId, can } = useSession();
   const [data, setData] = useState<{ floors: any[]; tables: any[] } | null>(null);
   const [floorId, setFloorId] = useState<number | null>(null);
@@ -153,11 +156,11 @@ function FloorView({ onOpen }: { onOpen: (id: number) => void }) {
         {data.floors.map((f) => <button key={f.id} className={f.id === floorId ? 'primary' : ''} onClick={() => setFloorId(f.id)}>{f.name}</button>)}
         <div className="grow" />
         <div className="legend">
-          <span><i style={{ borderColor: '#16a34a', background: '#f0fdf4' }} />Free</span>
-          <span><i style={{ borderColor: '#ea580c', background: '#fff7ed' }} />Occupied</span>
-          <span><i style={{ borderColor: '#2563eb', background: '#eff6ff' }} />Served</span>
-          <span><i style={{ borderColor: '#7c3aed', background: '#f5f3ff' }} />Bill requested</span>
-          <span><i style={{ borderColor: '#dc2626', background: '#fee2e2' }} />Customer order</span>
+          <span><i style={{ borderColor: '#16a34a', background: '#f0fdf4' }} />{tr("Free")}</span>
+          <span><i style={{ borderColor: '#ea580c', background: '#fff7ed' }} />{tr("Occupied")}</span>
+          <span><i style={{ borderColor: '#2563eb', background: '#eff6ff' }} />{tr("Served")}</span>
+          <span><i style={{ borderColor: '#7c3aed', background: '#f5f3ff' }} />{tr("Bill requested")}</span>
+          <span><i style={{ borderColor: '#dc2626', background: '#fee2e2' }} />{tr("Customer order")}</span>
         </div>
       </div>
       <div className="floor" style={{ padding: 8 }}>
@@ -171,10 +174,10 @@ function FloorView({ onOpen }: { onOpen: (id: number) => void }) {
               onClick={() => (t.ticket_id ? setMenu(t) : (setPax(t), setPaxVal('')))}>
               <div>{t.name}</div>
               {t.ticket_id ? <>
-                <div className="meta">{t.pax} pax · {fmt(t.total)}</div>
-                <div className="meta">{time(t.opened_at)}{t.ticket_count > 1 ? ` · ${t.ticket_count} checks` : ''}</div>
+                <div className="meta">{t.pax} {tr(" pax · ")}{fmt(t.total)}</div>
+                <div className="meta">{time(t.opened_at)}{t.ticket_count > 1 ? tr(" · {0} checks", t.ticket_count) : ''}</div>
               </> : <>
-                <div className="meta">{t.seats} seats</div>
+                <div className="meta">{t.seats} {tr(" seats")}</div>
                 {t.reserved_at && <div className="meta" style={{ color: '#7c3aed', fontWeight: 700 }}>📅 {t.reserved_at}</div>}
               </>}
             </div>
@@ -183,33 +186,33 @@ function FloorView({ onOpen }: { onOpen: (id: number) => void }) {
         </ScaledPlan>
       </div>
       {pax && (
-        <Modal title={`Table ${pax.name} — number of guests`} onClose={() => setPax(null)}>
+        <Modal title={tr("Table {0} — number of guests", pax.name)} onClose={() => setPax(null)}>
           <div style={{ maxWidth: 320, margin: 'auto' }} className="stack">
-            <div className="center" style={{ fontSize: '2.4rem', fontWeight: 800 }}>{paxVal || '0'} <span className="muted small">PAX</span></div>
+            <div className="center" style={{ fontSize: '2.4rem', fontWeight: 800 }}>{paxVal || '0'} <span className="muted small">{tr("PAX")}</span></div>
             <div className="row">{[1, 2, 3, 4, 5, 6].map((n) => <button key={n} className="grow" onClick={() => setPaxVal(String(n))}>{n}</button>)}</div>
             <Numpad value={paxVal} onChange={setPaxVal} decimals={false} max={3} />
-            <button className="primary lg" disabled={!Number(paxVal)} onClick={open}>Open table</button>
+            <button className="primary lg" disabled={!Number(paxVal)} onClick={open}>{tr("Open table")}</button>
           </div>
         </Modal>
       )}
       {menu && (
-        <Modal title={`Table ${menu.name}`} onClose={() => setMenu(null)}>
+        <Modal title={tr("Table {0}", menu.name)} onClose={() => setMenu(null)}>
           <div className="stack">
-            <div className="muted">{menu.ticket_ref} · {menu.pax} pax · {fmt(menu.total)} · {menu.waiter_name}</div>
-            <button className="primary lg" onClick={() => onOpen(menu.ticket_id)}>Open order</button>
+            <div className="muted">{menu.ticket_ref} · {menu.pax} {tr(" pax · ")}{fmt(menu.total)} · {menu.waiter_name}</div>
+            <button className="primary lg" onClick={() => onOpen(menu.ticket_id)}>{tr("Open order")}</button>
             {menu.ticket_count > 1 && <button className="lg" onClick={async () => {
               const list = await api.get<any[]>('/pos/tickets?status=active');
               const ids = list.filter((x) => x.table_name === menu.name);
               const pick = prompt('Open which check?\n' + ids.map((x, i) => `${i + 1}. ${x.ticket_ref} ${fmt(x.total)}`).join('\n'), '1');
               const sel = ids[Number(pick) - 1];
               if (sel) onOpen(sel.id);
-            }}>Choose split check ({menu.ticket_count})</button>}
+            }}>{tr("Choose split check (")}{menu.ticket_count})</button>}
             {can('pos.access') && <button className="danger lg" onClick={async () => {
-              const reason = prompt('Reason for cancelling the order and clearing this table?');
+              const reason = prompt(tr("Reason for cancelling the order and clearing this table?"));
               if (!reason) return;
-              const r = await run(() => withOverride((override) => api.post(`/pos/tables/${menu.id}/clear`, { reason, override })), 'Table cleared');
+              const r = await run(() => withOverride((override) => api.post(`/pos/tables/${menu.id}/clear`, { reason, override })), tr("Table cleared"));
               if (r) { setMenu(null); load(); }
-            }}>Cancel order & clear table</button>}
+            }}>{tr("Cancel order & clear table")}</button>}
           </div>
         </Modal>
       )}
@@ -221,6 +224,7 @@ function FloorView({ onOpen }: { onOpen: (id: number) => void }) {
 function OrderView({ ticketId, currency, onBack, onOpen, onPrint }: {
   ticketId: number; currency: string; onBack: () => void; onOpen: (id: number) => void; onPrint: (id: number) => void;
 }) {
+  const tr = useTr();
   const { can, branchId } = useSession();
   const [t, setT] = useState<any>(null);
   const [menu, setMenu] = useState<any>(null);
@@ -260,76 +264,75 @@ function OrderView({ ticketId, currency, onBack, onOpen, onPrint }: {
       <div className="ticket">
         <div className="ticket-head row between">
           <div>
-            <b>{t.ticket_ref}</b> <span className="pill">{ORDER_TYPES[t.order_type]}</span>
+            <b>{t.ticket_ref}</b> <span className="pill">{tr(ORDER_TYPES[t.order_type])}</span>
             {t.status !== 'open' && <span className={`pill ${t.status === 'pending' ? 'bad' : t.status === 'paid' ? 'ok' : ''}`}>{t.status}</span>}
             <div className="small muted">
-              {t.table_name && <>Table {t.table_name} · {t.pax} pax · </>}{t.channel_name}
+              {t.table_name && <>{tr("Table ")}{t.table_name} · {t.pax} {tr(" pax · ")}</>}{t.channel_name}
               {t.client_name && <> · 👤 {t.client_name}</>}{t.customer_name && !t.client_name && <> · {t.customer_name}</>}
               {t.delivery_company_name && <> · 🛵 {t.delivery_company_name}</>}
-              {t.delivery_lat != null && <> · <a href={mapLink(t.delivery_lat, t.delivery_lng)} target="_blank" rel="noreferrer">📍 map</a></>}
-              {t.scheduled_for && <div className="warn"><b>📅 Booked for {new Date(t.scheduled_for).toLocaleString(undefined, { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</b>{t.pax > 1 ? ` · ${t.pax} people` : ''}</div>}
+              {t.delivery_lat != null && <> · <a href={mapLink(t.delivery_lat, t.delivery_lng)} target="_blank" rel="noreferrer">{tr("📍 map")}</a></>}
+              {t.scheduled_for && <div className="warn"><b>{tr("📅 Booked for ")}{new Date(t.scheduled_for).toLocaleString(undefined, { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</b>{t.pax > 1 ? tr(" · {0} people", t.pax) : ''}</div>}
             </div>
           </div>
-          <button onClick={onBack}>← Back</button>
+          <button onClick={onBack}>{tr("← Back")}</button>
         </div>
         <div className="lines">
           {t.lines.map((l: any) => (
             <div key={l.id} className={`line ${l.id === sel ? 'sel' : ''} ${l.status === 'void' ? 'void' : ''}`}
               onClick={() => { if (l.status === 'active' && editable) { setSel(l.id); setModal('line'); } }}>
               <div className="row between nowrap">
-                <span><b>{fmtQty(l.qty)}×</b> {l.item_name}{l.size_name && ` (${l.size_name})`}{l.seat_no ? <span className="pill">S{l.seat_no}</span> : null}</span>
+                <span><b>{fmtQty(l.qty)}×</b> {l.item_name}{l.size_name && ` (${l.size_name})`}{l.seat_no ? <span className="pill">{tr("S")}{l.seat_no}</span> : null}</span>
                 <span>{fmt(l.line_total)}</span>
               </div>
               {(l.modifiers as any[]).length > 0 && <div className="mods">+ {(l.modifiers as any[]).map((m) => m.name).join(', ')}</div>}
               {l.notes && <div className="mods">📝 {l.notes}</div>}
               {l.allergy_note && <div className="allergy">⚠ {l.allergy_note}</div>}
               <div className="small muted">
-                {l.status === 'void' ? `VOID — ${l.void_reason}` : l.kitchen_status === 'new' ? <span className="warn">● not sent{l.from_customer ? ' (customer)' : ''}</span> : `✓ ${l.kitchen_status}`}
-                {l.refunded_qty > 0 && ` · refunded ${fmtQty(l.refunded_qty)}`}
+                {l.status === 'void' ? tr("VOID — {0}", l.void_reason) : l.kitchen_status === 'new' ? <span className="warn">{tr("● not sent")}{l.from_customer ? tr(" (customer)") : ''}</span> : `✓ ${l.kitchen_status}`}
+                {l.refunded_qty > 0 && tr(" · refunded {0}", fmtQty(l.refunded_qty))}
               </div>
             </div>
           ))}
-          {t.lines.length === 0 && <div className="muted center" style={{ padding: '2rem' }}>Tap menu items to add them</div>}
+          {t.lines.length === 0 && <div className="muted center" style={{ padding: '2rem' }}>{tr("Tap menu items to add them")}</div>}
         </div>
         <div className="totals">
-          <div className="row between small"><span>Subtotal</span><span>{fmt(t.subtotal)}</span></div>
-          {t.discount_amount > 0 && <div className="row between small"><span>Discount</span><span>-{fmt(t.discount_amount)}</span></div>}
-          <div className="row between small"><span>Tax</span><span>{fmt(t.tax_amount)}</span></div>
-          {t.paid_amount > 0 && <div className="row between small"><span>Paid</span><span>{fmt(t.paid_amount)}</span></div>}
-          <div className="row between"><span>{t.paid_amount > 0 ? 'Balance due' : 'Total'}</span><span className="grand">{fmt(t.paid_amount > 0 ? t.balance_due : t.total, currency)}</span></div>
+          <div className="row between small"><span>{tr("Subtotal")}</span><span>{fmt(t.subtotal)}</span></div>
+          {t.discount_amount > 0 && <div className="row between small"><span>{tr("Discount")}</span><span>-{fmt(t.discount_amount)}</span></div>}
+          <div className="row between small"><span>{tr("Tax")}</span><span>{fmt(t.tax_amount)}</span></div>
+          {t.paid_amount > 0 && <div className="row between small"><span>{tr("Paid")}</span><span>{fmt(t.paid_amount)}</span></div>}
+          <div className="row between"><span>{t.paid_amount > 0 ? tr("Balance due") : tr("Total")}</span><span className="grand">{fmt(t.paid_amount > 0 ? t.balance_due : t.total, currency)}</span></div>
         </div>
         {editable ? (
           <div className="actions">
             {t.status === 'pending' && t.scheduled_for && new Date(t.scheduled_for).getTime() > Date.now() + 3600_000 ? (
               // Advance booking: accept now, send to the kitchen nearer the time.
-              <button className="dark lg" style={{ gridColumn: 'span 2' }} onClick={() => run(() => api.post(`/pos/tickets/${ticketId}/accept`, {}), 'Order accepted — send it to the kitchen nearer the time').then((r) => r && setT(r))}>
-                Accept (cook later)
-              </button>
+              <button className="dark lg" style={{ gridColumn: 'span 2' }} onClick={() => run(() => api.post(`/pos/tickets/${ticketId}/accept`, {}), tr("Order accepted — send it to the kitchen nearer the time")).then((r) => r && setT(r))}>
+                {tr("Accept (cook later)")}</button>
             ) : (
               <button className="dark lg" style={{ gridColumn: 'span 2' }} disabled={!unsent && t.status !== 'pending'} onClick={send}>
-                {t.status === 'pending' ? 'Accept order' : `Send${unsent ? ` (${unsent})` : ''}`}
+                {t.status === 'pending' ? tr("Accept order") : tr("Send{0}", unsent ? ` (${unsent})` : '')}
               </button>
             )}
-            {can('pos.payment') && <button className="primary lg" style={{ gridColumn: 'span 2' }} disabled={!t.lines.some((l: any) => l.status === 'active')} onClick={() => setModal('pay')}>Pay</button>}
-            <button onClick={() => setModal('customer')}>Customer</button>
-            <button onClick={() => setModal('discount')}>Discount</button>
-            {can('pos.split') && <button onClick={() => setModal('split')}>Split</button>}
-            <button onClick={async () => { await api.patch(`/pos/tickets/${ticketId}`, { guest_status: 'bill_requested' }).catch(() => undefined); onPrint(ticketId); }}>Bill</button>
+            {can('pos.payment') && <button className="primary lg" style={{ gridColumn: 'span 2' }} disabled={!t.lines.some((l: any) => l.status === 'active')} onClick={() => setModal('pay')}>{tr("Pay")}</button>}
+            <button onClick={() => setModal('customer')}>{tr("Customer")}</button>
+            <button onClick={() => setModal('discount')}>{tr("Discount")}</button>
+            {can('pos.split') && <button onClick={() => setModal('split')}>{tr("Split")}</button>}
+            <button onClick={async () => { await api.patch(`/pos/tickets/${ticketId}`, { guest_status: 'bill_requested' }).catch(() => undefined); onPrint(ticketId); }}>{tr("Bill")}</button>
             {t.table_id && <button onClick={async () => {
-              const pax = prompt('Number of guests', String(t.pax));
+              const pax = prompt(tr("Number of guests"), String(t.pax));
               if (pax && Number(pax) > 0) run(() => api.patch(`/pos/tickets/${ticketId}`, { pax: Number(pax) })).then((r) => r && setT(r));
-            }}>Guests</button>}
+            }}>{tr("Guests")}</button>}
             <button className="danger" onClick={async () => {
-              const reason = prompt('Cancel the whole ticket — reason?');
+              const reason = prompt(tr("Cancel the whole ticket — reason?"));
               if (!reason) return;
-              const r = await run(() => withOverride((override) => api.post(`/pos/tickets/${ticketId}/cancel`, { reason, override })), 'Ticket cancelled');
+              const r = await run(() => withOverride((override) => api.post(`/pos/tickets/${ticketId}/cancel`, { reason, override })), tr("Ticket cancelled"));
               if (r) onBack();
-            }}>Cancel</button>
+            }}>{tr("Cancel")}</button>
           </div>
         ) : (
           <div className="actions">
-            <button className="lg" style={{ gridColumn: 'span 2' }} onClick={() => onPrint(ticketId)}>Print receipt</button>
-            <button className="primary lg" style={{ gridColumn: 'span 2' }} onClick={onBack}>Done</button>
+            <button className="lg" style={{ gridColumn: 'span 2' }} onClick={() => onPrint(ticketId)}>{tr("Print receipt")}</button>
+            <button className="primary lg" style={{ gridColumn: 'span 2' }} onClick={onBack}>{tr("Done")}</button>
           </div>
         )}
       </div>
@@ -363,13 +366,14 @@ function OrderView({ ticketId, currency, onBack, onOpen, onPrint }: {
       {modal === 'line' && line && <LineModal line={line} onClose={() => setModal(null)} onSaved={(r) => { setT(r); setModal(null); }} withOverride={withOverride} ticketId={ticketId} />}
       {modal === 'pay' && <PaymentModal ticket={t} onClose={() => setModal(null)} onPaid={(r) => { setT(r.ticket); if (r.ticket.status === 'paid') { setModal(null); toast(r.change > 0 ? `Paid — change ${fmt(r.change, currency)}` : 'Paid'); onPrint(ticketId); } }} />}
       {modal === 'discount' && <DiscountModal ticket={t} withOverride={withOverride} onClose={() => setModal(null)} onSaved={(r) => { setT(r); setModal(null); }} />}
-      {modal === 'split' && <SplitModal ticket={t} onClose={() => setModal(null)} onSplit={(r) => { setModal(null); toast(`New check ${r.split.ticket_ref}`); onOpen(r.split.id); }} />}
+      {modal === 'split' && <SplitModal ticket={t} onClose={() => setModal(null)} onSplit={(r) => { setModal(null); toast(tr("New check {0}", r.split.ticket_ref)); onOpen(r.split.id); }} />}
       {modal === 'customer' && <CustomerModal ticket={t} onClose={() => setModal(null)} onSaved={(r) => { setT(r); setModal(null); }} />}
     </div>
   );
 }
 
 function ItemModal({ item, menu, pax, onClose, onAdd }: { item: any; menu: any; pax: number; onClose: () => void; onAdd: (b: any) => void }) {
+  const tr = useTr();
   const [size, setSize] = useState<number | null>(item.sizes[0]?.id ?? null);
   const [mods, setMods] = useState<number[]>([]);
   const [qty, setQty] = useState(1);
@@ -381,14 +385,14 @@ function ItemModal({ item, menu, pax, onClose, onAdd }: { item: any; menu: any; 
     <Modal title={item.name} onClose={onClose}>
       <div className="stack">
         {item.sizes.length > 0 && <>
-          <h3>Size</h3>
+          <h3>{tr("Size")}</h3>
           <div className="row">{item.sizes.map((s: any) => (
             <button key={s.id} className={`lg ${size === s.id ? 'dark' : ''}`} onClick={() => setSize(s.id)}>{s.name} · {fmt(s.price)}</button>
           ))}</div>
         </>}
         {groups.map((g: any) => (
           <div key={g.id}>
-            <h3>{g.name} <span className="small muted">{g.min_select > 0 ? `choose ${g.min_select}-${g.max_select}` : `up to ${g.max_select}`}</span></h3>
+            <h3>{g.name} <span className="small muted">{g.min_select > 0 ? tr("choose {0}-{1}", g.min_select, g.max_select) : tr("up to {0}", g.max_select)}</span></h3>
             <div className="row">{g.modifiers.map((m: any) => (
               <button key={m.id} className={mods.includes(m.id) ? 'dark' : ''} onClick={() => setMods((x) => (x.includes(m.id) ? x.filter((y) => y !== m.id) : [...x, m.id]))}>
                 {m.name}{m.price_delta ? ` +${fmt(m.price_delta)}` : ''}
@@ -397,16 +401,16 @@ function ItemModal({ item, menu, pax, onClose, onAdd }: { item: any; menu: any; 
           </div>
         ))}
         <CookingNotes value={notes} onChange={setNotes} />
-        <label className="field">Allergy warning<input value={allergy} onChange={(e) => setAllergy(e.target.value)} placeholder="e.g. peanut allergy" /></label>
+        <label className="field">{tr("Allergy warning")}<input value={allergy} onChange={(e) => setAllergy(e.target.value)} placeholder={tr("e.g. peanut allergy")} /></label>
         <div className="row">
-          <span>Seat</span>
+          <span>{tr("Seat")}</span>
           {Array.from({ length: Math.min(Math.max(pax, 1), 12) }, (_, i) => i + 1).map((n) => (
             <button key={n} className={`sm ${seat === n ? 'dark' : ''}`} onClick={() => setSeat(seat === n ? null : n)}>{n}</button>
           ))}
         </div>
         <div className="row between">
           <div className="row"><button className="lg" onClick={() => setQty(Math.max(1, qty - 1))}>−</button><b style={{ fontSize: '1.4rem' }}>{qty}</b><button className="lg" onClick={() => setQty(qty + 1)}>+</button></div>
-          <button className="primary lg" onClick={() => onAdd({ menu_item_id: item.id, size_id: size, qty, modifier_ids: mods, notes: notes || null, allergy_note: allergy || null, seat_no: seat })}>Add to order</button>
+          <button className="primary lg" onClick={() => onAdd({ menu_item_id: item.id, size_id: size, qty, modifier_ids: mods, notes: notes || null, allergy_note: allergy || null, seat_no: seat })}>{tr("Add to order")}</button>
         </div>
       </div>
     </Modal>
@@ -414,6 +418,7 @@ function ItemModal({ item, menu, pax, onClose, onAdd }: { item: any; menu: any; 
 }
 
 function LineModal({ line, ticketId, onClose, onSaved, withOverride }: { line: any; ticketId: number; onClose: () => void; onSaved: (t: any) => void; withOverride: any }) {
+  const tr = useTr();
   const run = useAction();
   const sent = line.kitchen_status !== 'new';
   const [qty, setQty] = useState(line.qty);
@@ -429,26 +434,25 @@ function LineModal({ line, ticketId, onClose, onSaved, withOverride }: { line: a
         <div className="stack">
           <div className="row"><button className="lg" onClick={() => setQty(Math.max(1, qty - 1))}>−</button><b style={{ fontSize: '1.4rem' }}>{qty}</b><button className="lg" onClick={() => setQty(qty + 1)}>+</button></div>
           <CookingNotes value={notes} onChange={setNotes} />
-          <label className="field">Allergy warning<input value={allergy} onChange={(e) => setAllergy(e.target.value)} /></label>
+          <label className="field">{tr("Allergy warning")}<input value={allergy} onChange={(e) => setAllergy(e.target.value)} /></label>
           <div className="row between">
-            <button className="danger" onClick={async () => { const r = await run(() => api.del(base)); if (r) onSaved(r); }}>Remove</button>
-            <button className="primary lg" onClick={async () => { const r = await run(() => api.patch(base, { qty, notes: notes || null, allergy_note: allergy || null })); if (r) onSaved(r); }}>Save</button>
+            <button className="danger" onClick={async () => { const r = await run(() => api.del(base)); if (r) onSaved(r); }}>{tr("Remove")}</button>
+            <button className="primary lg" onClick={async () => { const r = await run(() => api.patch(base, { qty, notes: notes || null, allergy_note: allergy || null })); if (r) onSaved(r); }}>{tr("Save")}</button>
           </div>
         </div>
       ) : (
         <div className="stack">
-          <p className="muted">This line was already sent to the kitchen. Voiding is logged and shown on X/Z reports.</p>
-          <div className="row">Void quantity
-            <button onClick={() => setVoidQty(Math.max(1, voidQty - 1))}>−</button><b>{fmtQty(voidQty)}</b>
-            <button onClick={() => setVoidQty(Math.min(line.qty, voidQty + 1))}>+</button> of {fmtQty(line.qty)}
+          <p className="muted">{tr("This line was already sent to the kitchen. Voiding is logged and shown on X/Z reports.")}</p>
+          <div className="row">{tr("Void quantity")}<button onClick={() => setVoidQty(Math.max(1, voidQty - 1))}>−</button><b>{fmtQty(voidQty)}</b>
+            <button onClick={() => setVoidQty(Math.min(line.qty, voidQty + 1))}>+</button> {tr(" of ")}{fmtQty(line.qty)}
           </div>
           <div className="row">{['Customer changed mind', 'Wrong item', 'Quality issue', 'Took too long'].map((r) => <button key={r} className="sm" onClick={() => setReason(r)}>{r}</button>)}</div>
-          <label className="field">Reason<input value={reason} onChange={(e) => setReason(e.target.value)} /></label>
-          <label className="check"><input type="checkbox" checked={restock} onChange={(e) => setRestock(e.target.checked)} /> Return ingredients to stock (not prepared)</label>
+          <label className="field">{tr("Reason")}<input value={reason} onChange={(e) => setReason(e.target.value)} /></label>
+          <label className="check"><input type="checkbox" checked={restock} onChange={(e) => setRestock(e.target.checked)} /> {tr(" Return ingredients to stock (not prepared)")}</label>
           <button className="danger lg" disabled={!reason} onClick={async () => {
-            const r = await run(() => withOverride((override: any) => api.post(`${base}/void`, { reason, qty: voidQty, return_to_stock: restock, override })), 'Line voided');
+            const r = await run(() => withOverride((override: any) => api.post(`${base}/void`, { reason, qty: voidQty, return_to_stock: restock, override })), tr("Line voided"));
             if (r) onSaved(r);
-          }}>Void line</button>
+          }}>{tr("Void line")}</button>
         </div>
       )}
     </Modal>
@@ -456,6 +460,7 @@ function LineModal({ line, ticketId, onClose, onSaved, withOverride }: { line: a
 }
 
 function PaymentModal({ ticket, onClose, onPaid }: { ticket: any; onClose: () => void; onPaid: (r: any) => void }) {
+  const tr = useTr();
   const [methods, setMethods] = useState<any[]>([]);
   const [rates, setRates] = useState<any>({ current: [] });
   const [cur, setCur] = useState(ticket.currency);
@@ -487,19 +492,19 @@ function PaymentModal({ ticket, onClose, onPaid }: { ticket: any; onClose: () =>
     if (r) { setLines([]); onPaid(r); }
   };
   return (
-    <Modal title={`Payment — ${ticket.ticket_ref}`} onClose={onClose} wide>
+    <Modal title={tr("Payment — {0}", ticket.ticket_ref)} onClose={onClose} wide>
       <div className="row" style={{ alignItems: 'flex-start' }}>
         <div className="grow stack" style={{ minWidth: 280 }}>
           <div className="grid2">
-            <div className="stat"><div className="l">Due</div><div className="v">{fmt(due, ticket.currency)}</div></div>
-            <div className="stat"><div className="l">{change > 0 ? 'Change' : 'Remaining'}</div><div className={`v ${change > 0 ? 'ok' : ''}`}>{fmt(change > 0 ? change : remaining, ticket.currency)}</div></div>
+            <div className="stat"><div className="l">{tr("Due")}</div><div className="v">{fmt(due, ticket.currency)}</div></div>
+            <div className="stat"><div className="l">{change > 0 ? tr("Change") : tr("Remaining")}</div><div className={`v ${change > 0 ? 'ok' : ''}`}>{fmt(change > 0 ? change : remaining, ticket.currency)}</div></div>
           </div>
           <div className="row">
             {currencies.map((c) => <button key={c} className={c === cur ? 'dark' : ''} onClick={() => setCur(c)}>{c}{c !== ticket.currency ? ` @${rateOf(c)}` : ''}</button>)}
           </div>
-          {cur !== ticket.currency && <div className="small muted">Remaining in {cur}: {fmt(remaining / (rateOf(cur) || 1))}</div>}
+          {cur !== ticket.currency && <div className="small muted">{tr("Remaining in ")}{cur}: {fmt(remaining / (rateOf(cur) || 1))}</div>}
           <div className="row">{methods.map((m) => (
-            <button key={m.id} className="lg grow" disabled={m.method_type === 'credit' && !ticket.client_id} title={m.method_type === 'credit' && !ticket.client_id ? 'Select a credit client first' : ''} onClick={() => add(m)}>{m.name}</button>
+            <button key={m.id} className="lg grow" disabled={m.method_type === 'credit' && !ticket.client_id} title={m.method_type === 'credit' && !ticket.client_id ? tr("Select a credit client first") : ''} onClick={() => add(m)}>{m.name}</button>
           ))}</div>
           <table className="data">
             <tbody>
@@ -509,18 +514,18 @@ function PaymentModal({ ticket, onClose, onPaid }: { ticket: any; onClose: () =>
                   <td><button className="sm" onClick={() => setLines((x) => x.filter((_, j) => j !== i))}>✕</button></td></tr>
               ))}
               {ticket.payments.filter((p: any) => p.kind === 'payment').map((p: any) => (
-                <tr key={'p' + p.id} className="muted"><td>{p.method_name} (taken)</td><td className="num">{fmt(p.amount, p.currency_code)}</td><td /><td /></tr>
+                <tr key={'p' + p.id} className="muted"><td>{p.method_name} {tr(" (taken)")}</td><td className="num">{fmt(p.amount, p.currency_code)}</td><td /><td /></tr>
               ))}
             </tbody>
           </table>
           <button className="primary lg" disabled={!lines.length && due > 0.004} onClick={submit}>
-            {due <= 0.004 ? 'Close ticket (already paid online)' : entered >= due - 0.004 ? 'Validate & close' : 'Take partial payment'}
+            {due <= 0.004 ? tr("Close ticket (already paid online)") : entered >= due - 0.004 ? tr("Validate & close") : tr("Take partial payment")}
           </button>
         </div>
         <div style={{ width: 280 }}>
           <div className="center" style={{ fontSize: '2rem', fontWeight: 800, minHeight: 50 }}>{amount || '—'} <span className="small muted">{cur}</span></div>
           <Numpad value={amount} onChange={setAmount} />
-          <div className="small muted center" style={{ marginTop: 6 }}>Type an amount, then tap a payment method. Empty amount = pay remaining.</div>
+          <div className="small muted center" style={{ marginTop: 6 }}>{tr("Type an amount, then tap a payment method. Empty amount = pay remaining.")}</div>
         </div>
       </div>
     </Modal>
@@ -528,42 +533,44 @@ function PaymentModal({ ticket, onClose, onPaid }: { ticket: any; onClose: () =>
 }
 
 function DiscountModal({ ticket, onClose, onSaved, withOverride }: { ticket: any; onClose: () => void; onSaved: (t: any) => void; withOverride: any }) {
+  const tr = useTr();
   const [type, setType] = useState<'percent' | 'fixed'>(ticket.discount_type ?? 'percent');
   const [value, setValue] = useState(String(ticket.discount_value || ''));
   const [coupon, setCoupon] = useState('');
   const run = useAction();
   const apply = (body: any) => run(() => withOverride((override: any) => api.post(`/pos/tickets/${ticket.id}/discount`, { ...body, override }))).then((r) => r && onSaved(r));
   return (
-    <Modal title="Discount" onClose={onClose}>
+    <Modal title={tr("Discount")} onClose={onClose}>
       <div className="stack">
-        <div className="row"><button className={type === 'percent' ? 'dark' : ''} onClick={() => setType('percent')}>% Percent</button><button className={type === 'fixed' ? 'dark' : ''} onClick={() => setType('fixed')}>Fixed amount</button></div>
+        <div className="row"><button className={type === 'percent' ? 'dark' : ''} onClick={() => setType('percent')}>{tr("% Percent")}</button><button className={type === 'fixed' ? 'dark' : ''} onClick={() => setType('fixed')}>{tr("Fixed amount")}</button></div>
         <div className="row">{(type === 'percent' ? [5, 10, 15, 20, 50] : [50, 100, 200, 500]).map((v) => <button key={v} onClick={() => setValue(String(v))}>{v}{type === 'percent' ? '%' : ''}</button>)}</div>
         <input type="number" value={value} onChange={(e) => setValue(e.target.value)} />
         <div className="row">
-          <button className="primary" onClick={() => apply({ discount_type: type, value: Number(value) })}>Apply discount</button>
-          {ticket.discount_type && <button onClick={() => apply({ discount_type: null })}>Remove discount</button>}
+          <button className="primary" onClick={() => apply({ discount_type: type, value: Number(value) })}>{tr("Apply discount")}</button>
+          {ticket.discount_type && <button onClick={() => apply({ discount_type: null })}>{tr("Remove discount")}</button>}
         </div>
         <hr />
-        <label className="field">Coupon code<input value={coupon} onChange={(e) => setCoupon(e.target.value.toUpperCase())} /></label>
-        <button disabled={!coupon} onClick={() => apply({ coupon_code: coupon })}>Apply coupon</button>
+        <label className="field">{tr("Coupon code")}<input value={coupon} onChange={(e) => setCoupon(e.target.value.toUpperCase())} /></label>
+        <button disabled={!coupon} onClick={() => apply({ coupon_code: coupon })}>{tr("Apply coupon")}</button>
       </div>
     </Modal>
   );
 }
 
 function SplitModal({ ticket, onClose, onSplit }: { ticket: any; onClose: () => void; onSplit: (r: any) => void }) {
+  const tr = useTr();
   const [qty, setQty] = useState<Record<number, number>>({});
   const run = useAction();
   const active = ticket.lines.filter((l: any) => l.status === 'active');
   const seats = [...new Set(active.map((l: any) => l.seat_no).filter(Boolean))] as number[];
   const splitTotal = active.reduce((s: number, l: any) => s + (qty[l.id] ?? 0) * (l.line_total / l.qty), 0);
   return (
-    <Modal title="Split check" onClose={onClose}>
+    <Modal title={tr("Split check")} onClose={onClose}>
       <div className="stack">
-        {seats.length > 0 && <div className="row"><b>By seat:</b>{seats.map((s) => (
-          <button key={s} onClick={() => run(() => api.post(`/pos/tickets/${ticket.id}/split`, { mode: 'seat', seat_no: s })).then((r) => r && onSplit(r))}>Seat {s}</button>
+        {seats.length > 0 && <div className="row"><b>{tr("By seat:")}</b>{seats.map((s) => (
+          <button key={s} onClick={() => run(() => api.post(`/pos/tickets/${ticket.id}/split`, { mode: 'seat', seat_no: s })).then((r) => r && onSplit(r))}>{tr("Seat ")}{s}</button>
         ))}</div>}
-        <b>By items — tap to move to a new check:</b>
+        <b>{tr("By items — tap to move to a new check:")}</b>
         {active.map((l: any) => (
           <div key={l.id} className="row between">
             <span>{fmtQty(l.qty)}× {l.item_name}{l.size_name ? ` (${l.size_name})` : ''}</span>
@@ -576,14 +583,15 @@ function SplitModal({ ticket, onClose, onSplit }: { ticket: any; onClose: () => 
         ))}
         <button className="primary lg" disabled={!splitTotal} onClick={() => run(() => api.post(`/pos/tickets/${ticket.id}/split`, {
           mode: 'items', lines: Object.entries(qty).filter(([, q]) => q > 0).map(([id, q]) => ({ line_id: Number(id), qty: q })),
-        })).then((r) => r && onSplit(r))}>Move to new check ({fmt(splitTotal)})</button>
-        <p className="small muted">To split by custom amounts, take several partial payments on this check (Pay → enter amount → method).</p>
+        })).then((r) => r && onSplit(r))}>{tr("Move to new check (")}{fmt(splitTotal)})</button>
+        <p className="small muted">{tr("To split by custom amounts, take several partial payments on this check (Pay → enter amount → method).")}</p>
       </div>
     </Modal>
   );
 }
 
 function CustomerModal({ ticket, onClose, onSaved }: { ticket: any; onClose: () => void; onSaved: (t: any) => void }) {
+  const tr = useTr();
   const [clients, setClients] = useState<any[]>([]);
   const [dcos, setDcos] = useState<any[]>([]);
   const [zones, setZones] = useState<any[]>([]);
@@ -604,37 +612,36 @@ function CustomerModal({ ticket, onClose, onSaved }: { ticket: any; onClose: () 
     ...(ticket.table_id ? { order_type: undefined } : {}),
   })).then((r) => r && onSaved(r));
   return (
-    <Modal title="Customer, client & delivery" onClose={onClose}>
+    <Modal title={tr("Customer, client & delivery")} onClose={onClose}>
       <div className="stack">
         {!ticket.table_id && <div className="row">{['takeaway', 'delivery'].map((o) => (
-          <button key={o} className={f.order_type === o ? 'dark' : ''} onClick={() => setF({ ...f, order_type: o })}>{ORDER_TYPES[o]}</button>
+          <button key={o} className={f.order_type === o ? 'dark' : ''} onClick={() => setF({ ...f, order_type: o })}>{tr(ORDER_TYPES[o])}</button>
         ))}</div>}
-        <label className="field">Credit client (from client list)<input placeholder="Search name / phone" value={q} onChange={(e) => setQ(e.target.value)} /></label>
+        <label className="field">{tr("Credit client (from client list)")}<input placeholder={tr("Search name / phone")} value={q} onChange={(e) => setQ(e.target.value)} /></label>
         <div className="row">
           {shown.map((c) => <button key={c.id} className={`sm ${f.client_id === c.id ? 'dark' : ''}`} onClick={() => setF({ ...f, client_id: f.client_id === c.id ? null : c.id })}>
             {c.name}{c.credit_allowed ? ' 💳' : ''}</button>)}
         </div>
         <div className="grid2">
-          <label className="field">Customer name<input value={f.customer_name} onChange={(e) => setF({ ...f, customer_name: e.target.value })} /></label>
-          <label className="field">Phone<input value={f.customer_phone} onChange={(e) => setF({ ...f, customer_phone: e.target.value })} /></label>
-          <label className="field">Delivery partner
-            <select value={f.delivery_company_id ?? ''} onChange={(e) => setF({ ...f, delivery_company_id: e.target.value ? Number(e.target.value) : null })}>
-              <option value="">— none / self pickup —</option>{dcos.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
+          <label className="field">{tr("Customer name")}<input value={f.customer_name} onChange={(e) => setF({ ...f, customer_name: e.target.value })} /></label>
+          <label className="field">{tr("Phone")}<input value={f.customer_phone} onChange={(e) => setF({ ...f, customer_phone: e.target.value })} /></label>
+          <label className="field">{tr("Delivery partner")}<select value={f.delivery_company_id ?? ''} onChange={(e) => setF({ ...f, delivery_company_id: e.target.value ? Number(e.target.value) : null })}>
+              <option value="">{tr("— none / self pickup —")}</option>{dcos.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
             </select></label>
-          <label className="field">Delivery zone
-            <select value={f.delivery_zone_id ?? ''} onChange={(e) => setF({ ...f, delivery_zone_id: e.target.value ? Number(e.target.value) : null })}>
+          <label className="field">{tr("Delivery zone")}<select value={f.delivery_zone_id ?? ''} onChange={(e) => setF({ ...f, delivery_zone_id: e.target.value ? Number(e.target.value) : null })}>
               <option value="">—</option>{zones.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
             </select></label>
         </div>
-        <label className="field">Delivery address<input value={f.delivery_address} onChange={(e) => setF({ ...f, delivery_address: e.target.value })} /></label>
-        <label className="field">Order notes<input value={f.notes} onChange={(e) => setF({ ...f, notes: e.target.value })} /></label>
-        <button className="primary lg" onClick={save}>Save</button>
+        <label className="field">{tr("Delivery address")}<input value={f.delivery_address} onChange={(e) => setF({ ...f, delivery_address: e.target.value })} /></label>
+        <label className="field">{tr("Order notes")}<input value={f.notes} onChange={(e) => setF({ ...f, notes: e.target.value })} /></label>
+        <button className="primary lg" onClick={save}>{tr("Save")}</button>
       </div>
     </Modal>
   );
 }
 
 function NewOrderModal({ onClose, onCreated }: { onClose: () => void; onCreated: (id: number) => void }) {
+  const tr = useTr();
   const run = useAction();
   const [dcos, setDcos] = useState<any[]>([]);
   const { branchId } = useSession();
@@ -651,39 +658,40 @@ function NewOrderModal({ onClose, onCreated }: { onClose: () => void; onCreated:
     delivery_lat: f.order_type === 'delivery' ? f.pin?.lat ?? null : null, delivery_lng: f.order_type === 'delivery' ? f.pin?.lng ?? null : null,
   })).then((r) => r && onCreated(r.id));
   return (
-    <Modal title="New takeaway / delivery order" onClose={onClose}>
+    <Modal title={tr("New takeaway / delivery order")} onClose={onClose}>
       <div className="stack">
-        <div className="row">{['takeaway', 'delivery'].map((o) => <button key={o} className={`lg grow ${f.order_type === o ? 'dark' : ''}`} onClick={() => setF({ ...f, order_type: o })}>{ORDER_TYPES[o]}</button>)}</div>
-        <b>Delivery partner</b>
+        <div className="row">{['takeaway', 'delivery'].map((o) => <button key={o} className={`lg grow ${f.order_type === o ? 'dark' : ''}`} onClick={() => setF({ ...f, order_type: o })}>{tr(ORDER_TYPES[o])}</button>)}</div>
+        <b>{tr("Delivery partner")}</b>
         <div className="row">
-          <button className={!f.delivery_company_id ? 'dark' : ''} onClick={() => setF({ ...f, delivery_company_id: null })}>None / self pickup</button>
+          <button className={!f.delivery_company_id ? 'dark' : ''} onClick={() => setF({ ...f, delivery_company_id: null })}>{tr("None / self pickup")}</button>
           {dcos.map((d) => <button key={d.id} className={f.delivery_company_id === d.id ? 'dark' : ''} onClick={() => setF({ ...f, delivery_company_id: d.id })}>{d.name}</button>)}
         </div>
         <div className="grid2">
-          <label className="field">Customer name<input value={f.customer_name} onChange={(e) => setF({ ...f, customer_name: e.target.value })} /></label>
-          <label className="field">Phone<input value={f.customer_phone} onChange={(e) => setF({ ...f, customer_phone: e.target.value })} /></label>
+          <label className="field">{tr("Customer name")}<input value={f.customer_name} onChange={(e) => setF({ ...f, customer_name: e.target.value })} /></label>
+          <label className="field">{tr("Phone")}<input value={f.customer_phone} onChange={(e) => setF({ ...f, customer_phone: e.target.value })} /></label>
         </div>
         <div className="grid2">
-          <label className="field">Number of people<input type="number" min={1} max={100} value={f.pax} onChange={(e) => setF({ ...f, pax: e.target.value })} /></label>
-          <div className="field">{f.order_type === 'delivery' ? 'Delivery time' : 'Pickup time'}
+          <label className="field">{tr("Number of people")}<input type="number" min={1} max={100} value={f.pax} onChange={(e) => setF({ ...f, pax: e.target.value })} /></label>
+          <div className="field">{f.order_type === 'delivery' ? tr("Delivery time") : tr("Pickup time")}
             <div className="row nowrap">
-              <button type="button" className={`sm ${!f.later ? 'dark' : ''}`} onClick={() => setF({ ...f, later: false })}>ASAP</button>
-              <button type="button" className={`sm ${f.later ? 'dark' : ''}`} onClick={() => setF({ ...f, later: true })}>📅 Later</button>
-              {f.later && <input type="datetime-local" aria-label="Booked for" value={f.when} onChange={(e) => setF({ ...f, when: e.target.value })} />}
+              <button type="button" className={`sm ${!f.later ? 'dark' : ''}`} onClick={() => setF({ ...f, later: false })}>{tr("ASAP")}</button>
+              <button type="button" className={`sm ${f.later ? 'dark' : ''}`} onClick={() => setF({ ...f, later: true })}>{tr("📅 Later")}</button>
+              {f.later && <input type="datetime-local" aria-label={tr("Booked for")} value={f.when} onChange={(e) => setF({ ...f, when: e.target.value })} />}
             </div>
           </div>
         </div>
         {f.order_type === 'delivery' && <>
-          <label className="field">Delivery address<input value={f.delivery_address} onChange={(e) => setF({ ...f, delivery_address: e.target.value })} /></label>
-          <div className="field">Delivery location (optional)<MapPicker value={f.pin} onChange={(pin) => setF((x: any) => ({ ...x, pin }))} center={center} height={220} /></div>
+          <label className="field">{tr("Delivery address")}<input value={f.delivery_address} onChange={(e) => setF({ ...f, delivery_address: e.target.value })} /></label>
+          <div className="field">{tr("Delivery location (optional)")}<MapPicker value={f.pin} onChange={(pin) => setF((x: any) => ({ ...x, pin }))} center={center} height={220} /></div>
         </>}
-        <button className="primary lg" disabled={f.later && !f.when} onClick={create}>Start order</button>
+        <button className="primary lg" disabled={f.later && !f.when} onClick={create}>{tr("Start order")}</button>
       </div>
     </Modal>
   );
 }
 
 function OrdersView({ onOpen, onChanged }: { onOpen: (id: number) => void; onChanged: () => void }) {
+  const tr = useTr();
   const { branchId, can } = useSession();
   const [status, setStatus] = useState('active');
   const [rows, setRows] = useState<any[]>([]);
@@ -704,19 +712,19 @@ function OrdersView({ onOpen, onChanged }: { onOpen: (id: number) => void; onCha
       </div>
       <div className="table-wrap">
         <table className="data">
-          <thead><tr><th>Ticket</th><th>Type</th><th>Channel</th><th>Table / customer</th><th>Status</th><th>Opened</th><th className="num">Total</th><th /></tr></thead>
+          <thead><tr><th>{tr("Ticket")}</th><th>{tr("Type")}</th><th>{tr("Channel")}</th><th>{tr("Table / customer")}</th><th>{tr("Status")}</th><th>{tr("Opened")}</th><th className="num">{tr("Total")}</th><th /></tr></thead>
           <tbody>
             {rows.map((r) => (
               <tr key={r.id} className="click" onClick={() => onOpen(r.id)}>
-                <td><b>{r.ticket_ref}</b></td><td>{ORDER_TYPES[r.order_type]}</td><td>{r.channel_name}</td>
+                <td><b>{r.ticket_ref}</b></td><td>{tr(ORDER_TYPES[r.order_type])}</td><td>{r.channel_name}</td>
                 <td>{r.table_name ?? r.customer_name ?? ''}{r.delivery_company_name ? ` · 🛵 ${r.delivery_company_name}` : ''}</td>
                 <td><span className={`pill ${r.status === 'pending' ? 'bad' : r.status === 'paid' ? 'ok' : r.status === 'cancelled' ? '' : 'warn'}`}>{r.status}</span>
-                  {r.refund_status !== 'none' && <span className="pill info">refund {r.refund_status}</span>}</td>
+                  {r.refund_status !== 'none' && <span className="pill info">{tr("refund ")}{r.refund_status}</span>}</td>
                 <td>{r.scheduled_for ? <b className="warn">📅 {new Date(r.scheduled_for).toLocaleString(undefined, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</b> : time(r.opened_at)}</td><td className="num">{fmt(r.total)}</td>
-                <td onClick={(e) => e.stopPropagation()}>{r.status === 'paid' && r.refund_status !== 'full' && can('pos.access') && <button className="sm" onClick={() => setRefund(r)}>Refund</button>}</td>
+                <td onClick={(e) => e.stopPropagation()}>{r.status === 'paid' && r.refund_status !== 'full' && can('pos.access') && <button className="sm" onClick={() => setRefund(r)}>{tr("Refund")}</button>}</td>
               </tr>
             ))}
-            {rows.length === 0 && <tr><td colSpan={8} className="muted">No orders.</td></tr>}
+            {rows.length === 0 && <tr><td colSpan={8} className="muted">{tr("No orders.")}</td></tr>}
           </tbody>
         </table>
       </div>
@@ -726,6 +734,7 @@ function OrdersView({ onOpen, onChanged }: { onOpen: (id: number) => void; onCha
 }
 
 function RefundModal({ ticketId, onClose }: { ticketId: number; onClose: () => void }) {
+  const tr = useTr();
   const [t, setT] = useState<any>(null);
   const [methods, setMethods] = useState<any[]>([]);
   const [qty, setQty] = useState<Record<number, number>>({});
@@ -739,9 +748,9 @@ function RefundModal({ ticketId, onClose }: { ticketId: number; onClose: () => v
   if (!t) return null;
   const sel = Object.entries(qty).filter(([, q]) => q > 0).map(([id, q]) => ({ line_id: Number(id), qty: q }));
   return (
-    <Modal title={`Refund ${t.ticket_ref}`} onClose={onClose}>
+    <Modal title={tr("Refund {0}", t.ticket_ref)} onClose={onClose}>
       <div className="stack">
-        <div className="muted">Paid {fmt(t.total)} · already refunded {fmt(t.refunded_amount)}</div>
+        <div className="muted">{tr("Paid ")}{fmt(t.total)} {tr(" · already refunded ")}{fmt(t.refunded_amount)}</div>
         {t.lines.filter((l: any) => l.status === 'active').map((l: any) => (
           <div key={l.id} className="row between">
             <span>{fmtQty(l.qty - l.refunded_qty)}× {l.item_name}</span>
@@ -751,16 +760,16 @@ function RefundModal({ ticketId, onClose }: { ticketId: number; onClose: () => v
             </div>
           </div>
         ))}
-        <label className="field">…or custom amount<input type="number" value={amount} onChange={(e) => setAmount(e.target.value)} disabled={sel.length > 0} /></label>
-        <label className="field">Refund via<select value={method ?? ''} onChange={(e) => setMethod(Number(e.target.value))}>{methods.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}</select></label>
-        <label className="field">Reason<input value={reason} onChange={(e) => setReason(e.target.value)} /></label>
-        <label className="check"><input type="checkbox" checked={restock} onChange={(e) => setRestock(e.target.checked)} /> Return refunded items' ingredients to stock</label>
+        <label className="field">{tr("…or custom amount")}<input type="number" value={amount} onChange={(e) => setAmount(e.target.value)} disabled={sel.length > 0} /></label>
+        <label className="field">{tr("Refund via")}<select value={method ?? ''} onChange={(e) => setMethod(Number(e.target.value))}>{methods.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}</select></label>
+        <label className="field">{tr("Reason")}<input value={reason} onChange={(e) => setReason(e.target.value)} /></label>
+        <label className="check"><input type="checkbox" checked={restock} onChange={(e) => setRestock(e.target.checked)} /> {tr(" Return refunded items' ingredients to stock")}</label>
         <button className="danger lg" disabled={!reason || (!sel.length && !Number(amount))} onClick={async () => {
           const r = await run(() => withOverride((override: any) => api.post(`/pos/tickets/${ticketId}/refund`, {
             lines: sel.length ? sel : undefined, amount: sel.length ? undefined : Number(amount), reason, payment_method_id: method, restock, override,
-          })), 'Refund recorded');
+          })), tr("Refund recorded"));
           if (r) onClose();
-        }}>{t.total === t.refunded_amount ? 'Fully refunded' : 'Refund'}</button>
+        }}>{t.total === t.refunded_amount ? tr("Fully refunded") : tr("Refund")}</button>
       </div>
     </Modal>
   );
@@ -768,17 +777,18 @@ function RefundModal({ ticketId, onClose }: { ticketId: number; onClose: () => v
 
 /** Opening the day: cashier counts the change fund (opening float) put in the drawer. */
 function OpenDayModal({ currency, onOpened, onClose }: { currency: string; onOpened: () => void; onClose: () => void }) {
+  const tr = useTr();
   const [fund, setFund] = useState('');
   const run = useAction();
   return (
-    <Modal title="Open the day — change fund" onClose={onClose}>
+    <Modal title={tr("Open the day — change fund")} onClose={onClose}>
       <div style={{ maxWidth: 320, margin: 'auto' }} className="stack">
-        <p className="muted">Count the cash placed in the drawer as change fund. It is shown on the X / Z reports and used for the cash reconciliation.</p>
+        <p className="muted">{tr("Count the cash placed in the drawer as change fund. It is shown on the X / Z reports and used for the cash reconciliation.")}</p>
         <div className="center" style={{ fontSize: '2.2rem', fontWeight: 800 }}>{fund || '0'} <span className="muted small">{currency}</span></div>
         <Numpad value={fund} onChange={setFund} />
         <button className="primary lg" onClick={async () => {
-          if (await run(() => api.post('/pos/session/open', { opening_float: Number(fund) || 0 }), 'Day opened')) onOpened();
-        }}>Open day</button>
+          if (await run(() => api.post('/pos/session/open', { opening_float: Number(fund) || 0 }), tr("Day opened"))) onOpened();
+        }}>{tr("Open day")}</button>
       </div>
     </Modal>
   );

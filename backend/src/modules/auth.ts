@@ -145,7 +145,7 @@ export function authRoutes(app: FastifyInstance) {
       position: z.string().max(80).transform((s) => s.trim() || null).nullable().optional(),
       theme: z.enum(['gold', 'navy', 'emerald', 'crimson', 'slate']).optional(),
       landing_page: z.enum(['auto', 'home', 'pos', 'kds', 'orders']).optional(),
-      language: z.enum(['en', 'fr']).optional(),
+      language: z.enum(['en', 'fr', 'nl']).optional(),
     }), req.body);
     const cols = Object.keys(b);
     if (!cols.length) throw badRequest('Nothing to update');

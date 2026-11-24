@@ -1,5 +1,7 @@
+import { useT as useTr } from '../i18n';
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react';
 import { ApiError } from '../api';
+import { useT } from '../i18n';
 
 // ---------- Toasts ----------
 type Toast = { id: number; msg: string; error?: boolean };
@@ -23,20 +25,22 @@ export const useToast = () => useContext(ToastCtx);
 /** Wrap an async action: shows errors as toasts, returns undefined on failure. */
 export function useAction() {
   const toast = useToast();
+  const tr = useT(); // success texts and server error messages are shown in the user's language
   return useCallback(async <T,>(fn: () => Promise<T>, success?: string): Promise<T | undefined> => {
     try {
       const r = await fn();
-      if (success) toast(success);
+      if (success) toast(tr(success));
       return r;
     } catch (e) {
-      toast(e instanceof Error ? e.message : String(e), true);
+      toast(tr(e instanceof Error ? e.message : String(e)), true);
       return undefined;
     }
-  }, [toast]);
+  }, [toast, tr]);
 }
 
 // ---------- Modal ----------
 export function Modal({ title, onClose, children, wide }: { title: ReactNode; onClose: () => void; children: ReactNode; wide?: boolean }) {
+  const tr = useTr();
   useEffect(() => {
     const k = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
     window.addEventListener('keydown', k);
@@ -45,7 +49,7 @@ export function Modal({ title, onClose, children, wide }: { title: ReactNode; on
   return (
     <div className="modal-back" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
       <div className={`modal ${wide ? 'wide' : ''}`} role="dialog" aria-modal="true">
-        <div className="modal-head"><h2>{title}</h2><button className="ghost" onClick={onClose} aria-label="Close">✕</button></div>
+        <div className="modal-head"><h2>{title}</h2><button className="ghost" onClick={onClose} aria-label={tr("Close")}>✕</button></div>
         {children}
       </div>
     </div>
@@ -79,6 +83,7 @@ type Override = { user_id: number; pin: string };
 const OverrideCtx = createContext<(staff: { id: number; full_name: string }[], reason: string) => Promise<Override | null>>(async () => null);
 
 export function OverrideProvider({ children }: { children: ReactNode }) {
+  const tr = useTr();
   const [req, setReq] = useState<null | { staff: { id: number; full_name: string }[]; reason: string; resolve: (o: Override | null) => void }>(null);
   const [user, setUser] = useState<number | null>(null);
   const [pin, setPin] = useState('');
@@ -89,7 +94,7 @@ export function OverrideProvider({ children }: { children: ReactNode }) {
     <OverrideCtx.Provider value={ask}>
       {children}
       {req && (
-        <Modal title="Manager approval" onClose={() => close(null)}>
+        <Modal title={tr("Manager approval")} onClose={() => close(null)}>
           <p className="muted">{req.reason}</p>
           {!user ? (
             <div className="staff-grid">
@@ -130,4 +135,5 @@ export function useOverride(staff: () => Promise<{ id: number; full_name: string
   }, [ask, staff]);
 }
 
-export function Loading() { return <div className="center muted" style={{ padding: '2rem' }}>Loading…</div>; }
+export function Loading() {
+  const tr = useTr(); return <div className="center muted" style={{ padding: '2rem' }}>{tr("Loading…")}</div>; }

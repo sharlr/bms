@@ -1,3 +1,4 @@
+import { useT as useTr } from '../../i18n';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Link, Navigate, NavLink, Route, Routes, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { api } from '../../api';
@@ -161,6 +162,7 @@ function Pop({ trigger, children }: { trigger: (toggle: () => void) => ReactNode
 }
 
 export function AdminApp() {
+  const tr = useTr();
   const { me, loading, can, branchId, switchBranch, reload } = useSession();
   const { tenant } = useParams();
   const nav = useNavigate();
@@ -185,7 +187,7 @@ export function AdminApp() {
   const allGroups = groupLabels(NAV);
   const initials = u.full_name.split(' ').map((x) => x[0]).join('').slice(0, 2).toUpperCase();
 
-  const g = (perm: string | null, el: ReactNode) => (!perm || can(perm) ? el : <div className="card">You do not have access to this page.</div>);
+  const g = (perm: string | null, el: ReactNode) => (!perm || can(perm) ? el : <div className="card">{tr("You do not have access to this page.")}</div>);
 
   return (
     <div className={`shell ${sideHidden ? 'side-hidden' : ''}`}>
@@ -207,7 +209,7 @@ export function AdminApp() {
           <div className="crumb">
             <span className="muted">{me.tenant.name}</span><span className="muted">/</span>
             <span>{branch?.company_name}</span><span className="muted">/</span>
-            <select aria-label="Company and branch" value={branchId ?? ''} onChange={(e) => switchBranch(Number(e.target.value))}>
+            <select aria-label={tr("Company and branch")} value={branchId ?? ''} onChange={(e) => switchBranch(Number(e.target.value))}>
               {ctx.companies.map((c) => (
                 <optgroup key={c.id} label={`${c.name} (${c.base_currency})`}>
                   {ctx.branches.filter((b) => b.company_id === c.id).map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
@@ -219,7 +221,7 @@ export function AdminApp() {
           <Pop trigger={(toggle) => <button className="icon-btn" title={t('Theme')} aria-label={t('Theme')} onClick={toggle}>🎨</button>}>
             {(close) => THEMES.map((th) => (
               <button key={th.code} onClick={() => { close(); setPref({ theme: th.code }); }}>
-                <span className="swatch" style={{ background: th.swatch }} /> {th.label} {u.theme === th.code && '✓'}
+                <span className="swatch" style={{ background: th.swatch }} /> {tr(th.label)} {u.theme === th.code && '✓'}
               </button>
             ))}
           </Pop>
@@ -247,8 +249,8 @@ export function AdminApp() {
               <div className="side-brand" style={{ background: 'var(--side-bg)', borderRadius: 12, padding: '1rem', justifyContent: 'center' }}>
                 <div className="logo">{SOFTWARE.initials}</div><div style={{ textAlign: 'left' }}><b>{SOFTWARE.name}</b><span>{SOFTWARE.version}</span></div>
               </div>
-              <p>Multi-tenant restaurant management &amp; POS.<br />© {new Date().getFullYear()} {SOFTWARE.company}</p>
-              <p className="small muted">Tenant: {me.tenant.name} ({me.tenant.slug})</p>
+              <p>{tr("Multi-tenant restaurant management & POS.")}<br />© {new Date().getFullYear()} {SOFTWARE.company}</p>
+              <p className="small muted">{tr("Tenant: ")}{me.tenant.name} ({me.tenant.slug})</p>
             </div>
           </Modal>
         )}
@@ -260,33 +262,33 @@ export function AdminApp() {
             <Route path="floor" element={g('floor.manage', <FloorEditor />)} />
             <Route path="orders" element={g('pos.access', <Orders />)} />
             <Route path="reservations" element={g('pos.access', <ReservationsPage />)} />
-            <Route path="delivery/partners" element={g('delivery.manage', <CrudPage title="Delivery Partners" path="/delivery/companies"
-              columns={[{ key: 'name', label: 'Name' }, { key: 'phone', label: 'Phone' }, { key: 'available_online', label: 'Online' }, { key: 'active', label: 'Active' }]}
-              fields={[{ key: 'name', label: 'Name', required: true }, { key: 'phone', label: 'Phone' }, { key: 'email', label: 'Email' },
-                { key: 'available_online', label: 'Selectable by online customers', type: 'bool' }, { key: 'sort', label: 'Sort', type: 'number' }, { key: 'active', label: 'Active', type: 'bool' }]}
+            <Route path="delivery/partners" element={g('delivery.manage', <CrudPage title={tr("Delivery Partners")} path="/delivery/companies"
+              columns={[{ key: 'name', label: tr("Name") }, { key: 'phone', label: tr("Phone") }, { key: 'available_online', label: tr("Online") }, { key: 'active', label: tr("Active") }]}
+              fields={[{ key: 'name', label: tr("Name"), required: true }, { key: 'phone', label: tr("Phone") }, { key: 'email', label: tr("Email") },
+                { key: 'available_online', label: tr("Selectable by online customers"), type: 'bool' }, { key: 'sort', label: tr("Sort"), type: 'number' }, { key: 'active', label: tr("Active"), type: 'bool' }]}
               defaults={{ available_online: true, active: true }} />)} />
-            <Route path="delivery/zones" element={g('delivery.manage', <CrudPage title="Delivery Zones" path="/delivery/zones"
-              columns={[{ key: 'name', label: 'Zone' }, { key: 'active', label: 'Active' }]} fields={[{ key: 'name', label: 'Zone', required: true }, { key: 'active', label: 'Active', type: 'bool' }]} defaults={{ active: true }} />)} />
-            <Route path="delivery/rules" element={g('delivery.manage', <CrudPage title="Commission Rules" path="/delivery/rules"
-              columns={[{ key: 'delivery_company_id', label: 'Partner' }, { key: 'basis', label: 'Basis' }, { key: 'commission_type', label: 'Type' },
-                { key: 'value', label: 'Value', num: true }, { key: 'zone_id', label: 'Zone' }, { key: 'client_id', label: 'Client' }, { key: 'menu_item_id', label: 'Item' },
-                { key: 'branch_id', label: 'Branch' }, { key: 'priority', label: 'Priority', num: true }, { key: 'active', label: 'Active' }]}
+            <Route path="delivery/zones" element={g('delivery.manage', <CrudPage title={tr("Delivery Zones")} path="/delivery/zones"
+              columns={[{ key: 'name', label: tr("Zone") }, { key: 'active', label: tr("Active") }]} fields={[{ key: 'name', label: tr("Zone"), required: true }, { key: 'active', label: tr("Active"), type: 'bool' }]} defaults={{ active: true }} />)} />
+            <Route path="delivery/rules" element={g('delivery.manage', <CrudPage title={tr("Commission Rules")} path="/delivery/rules"
+              columns={[{ key: 'delivery_company_id', label: tr("Partner") }, { key: 'basis', label: tr("Basis") }, { key: 'commission_type', label: tr("Type") },
+                { key: 'value', label: tr("Value"), num: true }, { key: 'zone_id', label: tr("Zone") }, { key: 'client_id', label: tr("Client") }, { key: 'menu_item_id', label: tr("Item") },
+                { key: 'branch_id', label: tr("Branch") }, { key: 'priority', label: tr("Priority"), num: true }, { key: 'active', label: tr("Active") }]}
               fields={[
-                { key: 'delivery_company_id', label: 'Delivery partner', type: 'select', required: true, optionsFrom: { path: '/delivery/companies', label: 'name' }, createOnly: true },
-                { key: 'basis', label: 'Calculation basis', type: 'select', required: true, options: [
-                  { value: 'delivery', label: 'Per delivery (order)' }, { value: 'item', label: 'Per item' }, { value: 'zone', label: 'Per location / zone' }, { value: 'client', label: 'Per client' }] },
-                { key: 'commission_type', label: 'Commission type', type: 'select', required: true, options: [{ value: 'fixed', label: 'Fixed amount' }, { value: 'percent', label: 'Percentage' }] },
-                { key: 'value', label: 'Value', type: 'number', required: true },
-                { key: 'zone_id', label: 'Zone (zone basis)', type: 'select', optionsFrom: { path: '/delivery/zones', label: 'name', nullLabel: '—' } },
-                { key: 'client_id', label: 'Client (client basis)', type: 'select', optionsFrom: { path: '/clients', label: 'name', nullLabel: '—' } },
-                { key: 'menu_item_id', label: 'Item (item basis; empty = all items)', type: 'select', optionsFrom: { path: '/menu/items', label: 'name', nullLabel: 'All items' } },
-                { key: 'branch_id', label: 'Branch (empty = all)', type: 'select', optionsFrom: { path: '/branches', label: 'name', nullLabel: 'All branches' } },
-                { key: 'priority', label: 'Priority', type: 'number' }, { key: 'active', label: 'Active', type: 'bool' }]}
+                { key: 'delivery_company_id', label: tr("Delivery partner"), type: 'select', required: true, optionsFrom: { path: '/delivery/companies', label: tr("name") }, createOnly: true },
+                { key: 'basis', label: tr("Calculation basis"), type: 'select', required: true, options: [
+                  { value: 'delivery', label: tr("Per delivery (order)") }, { value: 'item', label: tr("Per item") }, { value: 'zone', label: tr("Per location / zone") }, { value: 'client', label: tr("Per client") }] },
+                { key: 'commission_type', label: tr("Commission type"), type: 'select', required: true, options: [{ value: 'fixed', label: tr("Fixed amount") }, { value: 'percent', label: tr("Percentage") }] },
+                { key: 'value', label: tr("Value"), type: 'number', required: true },
+                { key: 'zone_id', label: tr("Zone (zone basis)"), type: 'select', optionsFrom: { path: '/delivery/zones', label: tr("name"), nullLabel: '—' } },
+                { key: 'client_id', label: tr("Client (client basis)"), type: 'select', optionsFrom: { path: '/clients', label: tr("name"), nullLabel: '—' } },
+                { key: 'menu_item_id', label: tr("Item (item basis; empty = all items)"), type: 'select', optionsFrom: { path: '/menu/items', label: tr("name"), nullLabel: tr("All items") } },
+                { key: 'branch_id', label: tr("Branch (empty = all)"), type: 'select', optionsFrom: { path: '/branches', label: tr("name"), nullLabel: tr("All branches") } },
+                { key: 'priority', label: tr("Priority"), type: 'number' }, { key: 'active', label: tr("Active"), type: 'bool' }]}
               defaults={{ basis: 'delivery', commission_type: 'percent', value: 0, priority: 0, active: true }} />)} />
             <Route path="delivery/commissions" element={g('delivery.manage', <CommissionReport />)} />
-            <Route path="inventory/ingredients" element={<CrudPage title="Ingredients" path="/inventory/ingredients" canWrite={can('inventory.manage')}
-              columns={[{ key: 'name', label: 'Name' }, { key: 'unit', label: 'Unit' }, { key: 'cost_per_unit', label: 'Cost / unit', num: true }, { key: 'active', label: 'Active' }]}
-              fields={[{ key: 'name', label: 'Name', required: true }, { key: 'unit', label: 'Unit (g, ml, pcs…)', required: true }, { key: 'cost_per_unit', label: 'Cost per unit', type: 'number' }, { key: 'active', label: 'Active', type: 'bool' }]}
+            <Route path="inventory/ingredients" element={<CrudPage title={tr("Ingredients")} path="/inventory/ingredients" canWrite={can('inventory.manage')}
+              columns={[{ key: 'name', label: tr("Name") }, { key: 'unit', label: tr("Unit") }, { key: 'cost_per_unit', label: tr("Cost / unit"), num: true }, { key: 'active', label: tr("Active") }]}
+              fields={[{ key: 'name', label: tr("Name"), required: true }, { key: 'unit', label: tr("Unit (g, ml, pcs…)"), required: true }, { key: 'cost_per_unit', label: tr("Cost per unit"), type: 'number' }, { key: 'active', label: tr("Active"), type: 'bool' }]}
               defaults={{ unit: 'g', cost_per_unit: 0, active: true }} />} />
             <Route path="inventory/stock" element={<Stock />} />
             <Route path="inventory/recipes" element={<Recipes />} />
@@ -295,8 +297,8 @@ export function AdminApp() {
             <Route path="waste" element={<Waste />} />
             <Route path="rates" element={<ExchangeRates />} />
             <Route path="expenses" element={g('expenses.record', <Expenses />)} />
-            <Route path="expenses/categories" element={g('org.manage', <CrudPage title="Expense Categories" path="/expense-categories"
-              columns={[{ key: 'name', label: 'Name' }, { key: 'active', label: 'Active' }]} fields={[{ key: 'name', label: 'Name', required: true }, { key: 'active', label: 'Active', type: 'bool' }]} defaults={{ active: true }} />)} />
+            <Route path="expenses/categories" element={g('org.manage', <CrudPage title={tr("Expense Categories")} path="/expense-categories"
+              columns={[{ key: 'name', label: tr("Name") }, { key: 'active', label: tr("Active") }]} fields={[{ key: 'name', label: tr("Name"), required: true }, { key: 'active', label: tr("Active"), type: 'bool' }]} defaults={{ active: true }} />)} />
             <Route path="reports/x" element={g('reports.x', <XReport />)} />
             <Route path="reports/z" element={g('reports.z', <ZReport />)} />
             <Route path="reports/shifts" element={g('reports.x', <ShiftHistory />)} />
@@ -304,75 +306,75 @@ export function AdminApp() {
             <Route path="reports/staff" element={g('reports.monthly', <StaffReport />)} />
             <Route path="reports/settlements" element={g('reports.monthly', <SettlementReport />)} />
             <Route path="reports/items" element={g('reports.monthly', <ItemSalesReport />)} />
-            <Route path="menu/categories" element={<CrudPage title="Menu Categories" path="/menu/categories" canWrite={can('menu.manage')}
-              columns={[{ key: 'name', label: 'Name' }, { key: 'station_id', label: 'Prepared in' }, { key: 'color', label: 'Color' }, { key: 'sort', label: 'Sort', num: true }, { key: 'active', label: 'Active' }]}
-              fields={[{ key: 'name', label: 'Name', required: true },
-                { key: 'station_id', label: 'Prepared in (kitchen / bar)', type: 'select', optionsFrom: { path: '/prep-stations', label: 'name', nullLabel: 'No kitchen ticket' } },
-                { key: 'parent_id', label: 'Parent category', type: 'select', optionsFrom: { path: '/menu/categories', label: 'name', nullLabel: '— top level —' } },
-                { key: 'color', label: 'Tab color', type: 'color' }, { key: 'sort', label: 'Sort', type: 'number' }, { key: 'active', label: 'Active', type: 'bool' }]}
+            <Route path="menu/categories" element={<CrudPage title={tr("Menu Categories")} path="/menu/categories" canWrite={can('menu.manage')}
+              columns={[{ key: 'name', label: tr("Name") }, { key: 'station_id', label: tr("Prepared in") }, { key: 'color', label: tr("Color") }, { key: 'sort', label: tr("Sort"), num: true }, { key: 'active', label: tr("Active") }]}
+              fields={[{ key: 'name', label: tr("Name"), required: true },
+                { key: 'station_id', label: tr("Prepared in (kitchen / bar)"), type: 'select', optionsFrom: { path: '/prep-stations', label: tr("name"), nullLabel: tr("No kitchen ticket") } },
+                { key: 'parent_id', label: tr("Parent category"), type: 'select', optionsFrom: { path: '/menu/categories', label: tr("name"), nullLabel: tr("— top level —") } },
+                { key: 'color', label: tr("Tab color"), type: 'color' }, { key: 'sort', label: tr("Sort"), type: 'number' }, { key: 'active', label: tr("Active"), type: 'bool' }]}
               defaults={{ station_id: null, color: '#64748b', sort: 0, active: true }} />} />
             <Route path="menu/items" element={<MenuItems />} />
             <Route path="menu/catalog" element={<MenuCatalog />} />
-            <Route path="menu/stations" element={<CrudPage title="Kitchens & Bars (preparation stations)" path="/prep-stations" canWrite={can('menu.manage')}
-              columns={[{ key: 'name', label: 'Name' }, { key: 'color', label: 'Colour' }, { key: 'sort', label: 'Sort', num: true }, { key: 'active', label: 'Active' }]}
-              fields={[{ key: 'name', label: 'Name (e.g. Grill, Pizza oven, Pool bar)', required: true }, { key: 'color', label: 'Colour on the kitchen display', type: 'color' },
-                { key: 'sort', label: 'Sort', type: 'number' }, { key: 'active', label: 'Active', type: 'bool' }]}
+            <Route path="menu/stations" element={<CrudPage title={tr("Kitchens & Bars (preparation stations)")} path="/prep-stations" canWrite={can('menu.manage')}
+              columns={[{ key: 'name', label: tr("Name") }, { key: 'color', label: tr("Colour") }, { key: 'sort', label: tr("Sort"), num: true }, { key: 'active', label: tr("Active") }]}
+              fields={[{ key: 'name', label: tr("Name (e.g. Grill, Pizza oven, Pool bar)"), required: true }, { key: 'color', label: tr("Colour on the kitchen display"), type: 'color' },
+                { key: 'sort', label: tr("Sort"), type: 'number' }, { key: 'active', label: tr("Active"), type: 'bool' }]}
               defaults={{ color: '#2563eb', sort: 0, active: true }} />} />
-            <Route path="menu/cooking-notes" element={<CrudPage title="Cooking Notes" path="/menu/cooking-notes" canWrite={can('menu.manage')}
-              columns={[{ key: 'text', label: 'Note' }, { key: 'sort', label: 'Sort', num: true }, { key: 'active', label: 'Active' }]}
-              fields={[{ key: 'text', label: 'Note (e.g. Well done)', required: true }, { key: 'sort', label: 'Sort', type: 'number' }, { key: 'active', label: 'Active', type: 'bool' }]}
+            <Route path="menu/cooking-notes" element={<CrudPage title={tr("Cooking Notes")} path="/menu/cooking-notes" canWrite={can('menu.manage')}
+              columns={[{ key: 'text', label: tr("Note") }, { key: 'sort', label: tr("Sort"), num: true }, { key: 'active', label: tr("Active") }]}
+              fields={[{ key: 'text', label: tr("Note (e.g. Well done)"), required: true }, { key: 'sort', label: tr("Sort"), type: 'number' }, { key: 'active', label: tr("Active"), type: 'bool' }]}
               defaults={{ sort: 0, active: true }} />} />
             <Route path="menu/modifiers" element={<div className="stack">
-              <CrudPage title="Modifier Groups" path="/menu/modifier-groups" canWrite={can('menu.manage')}
-                columns={[{ key: 'name', label: 'Group' }, { key: 'min_select', label: 'Min', num: true }, { key: 'max_select', label: 'Max', num: true }, { key: 'active', label: 'Active' }]}
-                fields={[{ key: 'name', label: 'Name', required: true }, { key: 'min_select', label: 'Min selections', type: 'number' }, { key: 'max_select', label: 'Max selections', type: 'number' }, { key: 'active', label: 'Active', type: 'bool' }]}
+              <CrudPage title={tr("Modifier Groups")} path="/menu/modifier-groups" canWrite={can('menu.manage')}
+                columns={[{ key: 'name', label: tr("Group") }, { key: 'min_select', label: tr("Min"), num: true }, { key: 'max_select', label: tr("Max"), num: true }, { key: 'active', label: tr("Active") }]}
+                fields={[{ key: 'name', label: tr("Name"), required: true }, { key: 'min_select', label: tr("Min selections"), type: 'number' }, { key: 'max_select', label: tr("Max selections"), type: 'number' }, { key: 'active', label: tr("Active"), type: 'bool' }]}
                 defaults={{ min_select: 0, max_select: 5, active: true }} />
-              <CrudPage title="Modifiers" path="/menu/modifiers" canWrite={can('menu.manage')}
-                columns={[{ key: 'group_id', label: 'Group' }, { key: 'name', label: 'Modifier' }, { key: 'price_delta', label: 'Price +/-', num: true }, { key: 'active', label: 'Active' }]}
-                fields={[{ key: 'group_id', label: 'Group', type: 'select', required: true, optionsFrom: { path: '/menu/modifier-groups', label: 'name' }, createOnly: true },
-                  { key: 'name', label: 'Name', required: true }, { key: 'price_delta', label: 'Price change', type: 'number' }, { key: 'sort', label: 'Sort', type: 'number' }, { key: 'active', label: 'Active', type: 'bool' }]}
+              <CrudPage title={tr("Modifiers")} path="/menu/modifiers" canWrite={can('menu.manage')}
+                columns={[{ key: 'group_id', label: tr("Group") }, { key: 'name', label: tr("Modifier") }, { key: 'price_delta', label: tr("Price +/-"), num: true }, { key: 'active', label: tr("Active") }]}
+                fields={[{ key: 'group_id', label: tr("Group"), type: 'select', required: true, optionsFrom: { path: '/menu/modifier-groups', label: tr("name") }, createOnly: true },
+                  { key: 'name', label: tr("Name"), required: true }, { key: 'price_delta', label: tr("Price change"), type: 'number' }, { key: 'sort', label: tr("Sort"), type: 'number' }, { key: 'active', label: tr("Active"), type: 'bool' }]}
                 defaults={{ price_delta: 0, sort: 0, active: true }} />
             </div>} />
-            <Route path="clients" element={<CrudPage title="Client List" path="/clients" canWrite={can('clients.manage')}
-              columns={[{ key: 'name', label: 'Name' }, { key: 'phone', label: 'Phone' }, { key: 'credit_allowed', label: 'Credit' },
-                { key: 'credit_limit', label: 'Limit', num: true }, { key: 'balance', label: 'Balance owed', num: true, render: (r) => fmt(r.balance) }, { key: 'active', label: 'Active' }]}
-              fields={[{ key: 'name', label: 'Name', required: true }, { key: 'phone', label: 'Phone' }, { key: 'email', label: 'Email' }, { key: 'tax_id', label: 'Tax ID' },
-                { key: 'address', label: 'Address', type: 'textarea' }, { key: 'credit_allowed', label: 'Allow credit sales', type: 'bool' },
-                { key: 'credit_limit', label: 'Credit limit (0 = unlimited)', type: 'number' }, { key: 'notes', label: 'Notes', type: 'textarea' }, { key: 'active', label: 'Active', type: 'bool' }]}
+            <Route path="clients" element={<CrudPage title={tr("Client List")} path="/clients" canWrite={can('clients.manage')}
+              columns={[{ key: 'name', label: tr("Name") }, { key: 'phone', label: tr("Phone") }, { key: 'credit_allowed', label: tr("Credit") },
+                { key: 'credit_limit', label: tr("Limit"), num: true }, { key: 'balance', label: tr("Balance owed"), num: true, render: (r) => fmt(r.balance) }, { key: 'active', label: tr("Active") }]}
+              fields={[{ key: 'name', label: tr("Name"), required: true }, { key: 'phone', label: tr("Phone") }, { key: 'email', label: tr("Email") }, { key: 'tax_id', label: tr("Tax ID") },
+                { key: 'address', label: tr("Address"), type: 'textarea' }, { key: 'credit_allowed', label: tr("Allow credit sales"), type: 'bool' },
+                { key: 'credit_limit', label: tr("Credit limit (0 = unlimited)"), type: 'number' }, { key: 'notes', label: tr("Notes"), type: 'textarea' }, { key: 'active', label: tr("Active"), type: 'bool' }]}
               defaults={{ credit_allowed: false, credit_limit: 0, active: true }} />} />
-            <Route path="coupons" element={g('clients.manage', <CrudPage title="Coupons" path="/coupons"
-              columns={[{ key: 'code', label: 'Code' }, { key: 'discount_type', label: 'Type' }, { key: 'value', label: 'Value', num: true }, { key: 'used_count', label: 'Used', num: true }, { key: 'max_uses', label: 'Max', num: true }, { key: 'active', label: 'Active' }]}
-              fields={[{ key: 'code', label: 'Code', required: true }, { key: 'discount_type', label: 'Type', type: 'select', required: true, options: [{ value: 'percent', label: 'Percent' }, { value: 'fixed', label: 'Fixed' }] },
-                { key: 'value', label: 'Value', type: 'number', required: true }, { key: 'min_order', label: 'Minimum order', type: 'number' },
-                { key: 'valid_from', label: 'Valid from', type: 'date' }, { key: 'valid_to', label: 'Valid to', type: 'date' }, { key: 'max_uses', label: 'Max uses', type: 'number' }, { key: 'active', label: 'Active', type: 'bool' }]}
+            <Route path="coupons" element={g('clients.manage', <CrudPage title={tr("Coupons")} path="/coupons"
+              columns={[{ key: 'code', label: tr("Code") }, { key: 'discount_type', label: tr("Type") }, { key: 'value', label: tr("Value"), num: true }, { key: 'used_count', label: tr("Used"), num: true }, { key: 'max_uses', label: tr("Max"), num: true }, { key: 'active', label: tr("Active") }]}
+              fields={[{ key: 'code', label: tr("Code"), required: true }, { key: 'discount_type', label: tr("Type"), type: 'select', required: true, options: [{ value: 'percent', label: tr("Percent") }, { value: 'fixed', label: tr("Fixed") }] },
+                { key: 'value', label: tr("Value"), type: 'number', required: true }, { key: 'min_order', label: tr("Minimum order"), type: 'number' },
+                { key: 'valid_from', label: tr("Valid from"), type: 'date' }, { key: 'valid_to', label: tr("Valid to"), type: 'date' }, { key: 'max_uses', label: tr("Max uses"), type: 'number' }, { key: 'active', label: tr("Active"), type: 'bool' }]}
               defaults={{ discount_type: 'percent', min_order: 0, active: true }} />)} />
             <Route path="settings/companies" element={g('org.manage', <Companies />)} />
             <Route path="settings/branches" element={g('org.manage', <Branches />)} />
             <Route path="settings/users" element={g('users.manage', <Users />)} />
             <Route path="settings/roles" element={g('users.manage', <Roles />)} />
             <Route path="settings/devices" element={g('org.manage', <Devices />)} />
-            <Route path="settings/printers" element={g('org.manage', <CrudPage title="Printers (per branch)" path="/printers"
-              columns={[{ key: 'name', label: 'Name' }, { key: 'kind', label: 'Kind' }, { key: 'station_id', label: 'Kitchen / bar' }, { key: 'connection', label: 'Connection' }, { key: 'active', label: 'Active' }]}
-              fields={[{ key: 'name', label: 'Name', required: true },
-                { key: 'kind', label: 'Kind', type: 'select', required: true, options: [{ value: 'kot', label: 'Kitchen ticket (KOT)' }, { value: 'receipt', label: 'Receipt' }] },
-                { key: 'station_id', label: 'Kitchen / bar (for KOT printers)', type: 'select', optionsFrom: { path: '/prep-stations', label: 'name', nullLabel: '— (receipt printer)' } },
-                { key: 'connection', label: 'Connection', help: 'tcp://192.168.1.50:9100 (reached by the in-store print agent), or "browser" for receipts' },
-                { key: 'chars_per_line', label: 'Characters per line', type: 'number' }, { key: 'active', label: 'Active', type: 'bool' }]}
+            <Route path="settings/printers" element={g('org.manage', <CrudPage title={tr("Printers (per branch)")} path="/printers"
+              columns={[{ key: 'name', label: tr("Name") }, { key: 'kind', label: tr("Kind") }, { key: 'station_id', label: tr("Kitchen / bar") }, { key: 'connection', label: tr("Connection") }, { key: 'active', label: tr("Active") }]}
+              fields={[{ key: 'name', label: tr("Name"), required: true },
+                { key: 'kind', label: tr("Kind"), type: 'select', required: true, options: [{ value: 'kot', label: tr("Kitchen ticket (KOT)") }, { value: 'receipt', label: tr("Receipt") }] },
+                { key: 'station_id', label: tr("Kitchen / bar (for KOT printers)"), type: 'select', optionsFrom: { path: '/prep-stations', label: tr("name"), nullLabel: tr("— (receipt printer)") } },
+                { key: 'connection', label: tr("Connection"), help: tr("tcp://192.168.1.50:9100 (reached by the in-store print agent), or \"browser\" for receipts") },
+                { key: 'chars_per_line', label: tr("Characters per line"), type: 'number' }, { key: 'active', label: tr("Active"), type: 'bool' }]}
               defaults={{ kind: 'kot', station_id: null, connection: 'tcp://192.168.1.50:9100', chars_per_line: 42, active: true }} />)} />
-            <Route path="settings/registers" element={g('org.manage', <CrudPage title="Registers / Counters" path="/registers"
-              columns={[{ key: 'name', label: 'Name' }, { key: 'active', label: 'Active' }]} fields={[{ key: 'name', label: 'Name', required: true }, { key: 'active', label: 'Active', type: 'bool' }]} defaults={{ active: true }} />)} />
-            <Route path="settings/payment-methods" element={g('org.manage', <CrudPage title="Payment Methods" path="/payment-methods"
-              columns={[{ key: 'name', label: 'Name' }, { key: 'method_type', label: 'Type' }, { key: 'sort', label: 'Sort', num: true }, { key: 'active', label: 'Active' }]}
-              fields={[{ key: 'name', label: 'Name', required: true }, { key: 'method_type', label: 'Type', type: 'select', required: true, options: ['cash', 'card', 'credit', 'mobile_money', 'voucher', 'other'].map((v) => ({ value: v, label: v })) },
-                { key: 'sort', label: 'Sort', type: 'number' }, { key: 'active', label: 'Active', type: 'bool' }]} defaults={{ method_type: 'cash', sort: 0, active: true }} />)} />
-            <Route path="settings/channels" element={g('org.manage', <CrudPage title="Receipt Channels" path="/receipt-channels"
-              columns={[{ key: 'code', label: 'Code' }, { key: 'name', label: 'Name' }, { key: 'channel_type', label: 'Type' }, { key: 'branch_id', label: 'Branch' }, { key: 'active', label: 'Active' }]}
-              fields={[{ key: 'code', label: 'Code (A-Z, 0-9, _)', required: true }, { key: 'name', label: 'Name', required: true },
-                { key: 'channel_type', label: 'Type', type: 'select', required: true, options: ['pos', 'waiter', 'takeaway', 'kiosk', 'qr', 'online', 'delivery'].map((v) => ({ value: v, label: v })) },
-                { key: 'branch_id', label: 'Branch (empty = all)', type: 'select', optionsFrom: { path: '/branches', label: 'name', nullLabel: 'All branches' } },
-                { key: 'active', label: 'Active', type: 'bool' }]} defaults={{ channel_type: 'pos', active: true }} />)} />
+            <Route path="settings/registers" element={g('org.manage', <CrudPage title={tr("Registers / Counters")} path="/registers"
+              columns={[{ key: 'name', label: tr("Name") }, { key: 'active', label: tr("Active") }]} fields={[{ key: 'name', label: tr("Name"), required: true }, { key: 'active', label: tr("Active"), type: 'bool' }]} defaults={{ active: true }} />)} />
+            <Route path="settings/payment-methods" element={g('org.manage', <CrudPage title={tr("Payment Methods")} path="/payment-methods"
+              columns={[{ key: 'name', label: tr("Name") }, { key: 'method_type', label: tr("Type") }, { key: 'sort', label: tr("Sort"), num: true }, { key: 'active', label: tr("Active") }]}
+              fields={[{ key: 'name', label: tr("Name"), required: true }, { key: 'method_type', label: tr("Type"), type: 'select', required: true, options: ['cash', 'card', 'credit', 'mobile_money', 'voucher', 'other'].map((v) => ({ value: v, label: v })) },
+                { key: 'sort', label: tr("Sort"), type: 'number' }, { key: 'active', label: tr("Active"), type: 'bool' }]} defaults={{ method_type: 'cash', sort: 0, active: true }} />)} />
+            <Route path="settings/channels" element={g('org.manage', <CrudPage title={tr("Receipt Channels")} path="/receipt-channels"
+              columns={[{ key: 'code', label: tr("Code") }, { key: 'name', label: tr("Name") }, { key: 'channel_type', label: tr("Type") }, { key: 'branch_id', label: tr("Branch") }, { key: 'active', label: tr("Active") }]}
+              fields={[{ key: 'code', label: tr("Code (A-Z, 0-9, _)"), required: true }, { key: 'name', label: tr("Name"), required: true },
+                { key: 'channel_type', label: tr("Type"), type: 'select', required: true, options: ['pos', 'waiter', 'takeaway', 'kiosk', 'qr', 'online', 'delivery'].map((v) => ({ value: v, label: v })) },
+                { key: 'branch_id', label: tr("Branch (empty = all)"), type: 'select', optionsFrom: { path: '/branches', label: tr("name"), nullLabel: tr("All branches") } },
+                { key: 'active', label: tr("Active"), type: 'bool' }]} defaults={{ channel_type: 'pos', active: true }} />)} />
             <Route path="settings/print-jobs" element={g('org.manage', <PrintJobs />)} />
-            <Route path="*" element={<div className="card">Not found</div>} />
+            <Route path="*" element={<div className="card">{tr("Not found")}</div>} />
           </Routes>
         </main>
       </div>
@@ -381,29 +383,31 @@ export function AdminApp() {
 }
 
 function Roles() {
+  const tr = useTr();
   const [perms, setPerms] = useState<Record<string, string> | null>(null);
   useEffect(() => { api.get('/auth/permissions').then(setPerms).catch(() => undefined); }, []);
-  return <CrudPage title="Roles & Permissions" path="/roles" deleteLabel={null}
-    columns={[{ key: 'name', label: 'Role' }, { key: 'permissions', label: 'Permissions', render: (r) => <span className="small">{r.permissions.join(', ')}</span> }]}
-    fields={[{ key: 'name', label: 'Name', required: true }]}
+  return <CrudPage title={tr("Roles & Permissions")} path="/roles" deleteLabel={null}
+    columns={[{ key: 'name', label: tr("Role") }, { key: 'permissions', label: tr("Permissions"), render: (r) => <span className="small">{r.permissions.join(', ')}</span> }]}
+    fields={[{ key: 'name', label: tr("Name"), required: true }]}
     defaults={{ permissions: [] }}
     rowActions={(r, reload) => perms && <PermEditor role={r} perms={perms} onSaved={reload} />} />;
 }
 
 function PermEditor({ role, perms, onSaved }: { role: any; perms: Record<string, string>; onSaved: () => void }) {
+  const tr = useTr();
   const [open, setOpen] = useState(false);
   const [sel, setSel] = useState<string[]>(role.permissions);
-  if (!open) return <button className="sm" onClick={() => setOpen(true)}>Permissions</button>;
+  if (!open) return <button className="sm" onClick={() => setOpen(true)}>{tr("Permissions")}</button>;
   return (
     <div className="modal-back"><div className="modal">
       <h2>{role.name}</h2>
-      <label className="check"><input type="checkbox" checked={sel.includes('*')} onChange={(e) => setSel(e.target.checked ? ['*'] : [])} /> <b>All permissions (administrator)</b></label>
+      <label className="check"><input type="checkbox" checked={sel.includes('*')} onChange={(e) => setSel(e.target.checked ? ['*'] : [])} /> <b>{tr("All permissions (administrator)")}</b></label>
       <div className="grid2">{Object.entries(perms).map(([k, v]) => (
-        <label key={k} className="check small"><input type="checkbox" disabled={sel.includes('*')} checked={sel.includes(k)} onChange={(e) => setSel(e.target.checked ? [...sel, k] : sel.filter((x) => x !== k))} /> {v}</label>
+        <label key={k} className="check small"><input type="checkbox" disabled={sel.includes('*')} checked={sel.includes(k)} onChange={(e) => setSel(e.target.checked ? [...sel, k] : sel.filter((x) => x !== k))} /> {tr(v)}</label>
       ))}</div>
       <div className="row" style={{ justifyContent: 'flex-end', marginTop: '1rem' }}>
-        <button onClick={() => setOpen(false)}>Cancel</button>
-        <button className="primary" onClick={async () => { await api.patch(`/roles/${role.id}`, { permissions: sel }); setOpen(false); onSaved(); }}>Save</button>
+        <button onClick={() => setOpen(false)}>{tr("Cancel")}</button>
+        <button className="primary" onClick={async () => { await api.patch(`/roles/${role.id}`, { permissions: sel }); setOpen(false); onSaved(); }}>{tr("Save")}</button>
       </div>
     </div></div>
   );

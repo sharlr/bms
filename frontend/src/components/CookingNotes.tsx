@@ -1,3 +1,4 @@
+import { useT as useTr } from '../i18n';
 import { useEffect, useState } from 'react';
 import { api } from '../api';
 
@@ -10,6 +11,7 @@ const presets = () => (cache ??= api.get<any[]>('/menu/cooking-notes?active=true
  * The kitchen receives one text: "Well done, No onions, extra crispy".
  */
 export function CookingNotes({ value, onChange, max = 300 }: { value: string; onChange: (v: string) => void; max?: number }) {
+  const tr = useTr();
   const [list, setList] = useState<string[]>([]);
   // Split an existing note back into chips (known presets) and free text (the rest).
   const [chips, setChips] = useState<string[]>([]);
@@ -27,15 +29,14 @@ export function CookingNotes({ value, onChange, max = 300 }: { value: string; on
   const emit = (c: string[], t: string) => onChange([...c, t.trim()].filter(Boolean).join(', ').slice(0, max));
 
   return (
-    <div className="field">Cooking notes
-      <select aria-label="Add a cooking note from the list" value="" onChange={(e) => {
+    <div className="field">{tr("Cooking notes")}<select aria-label={tr("Add a cooking note from the list")} value="" onChange={(e) => {
         const v = e.target.value;
         if (!v || chips.includes(v)) return;
         const c = [...chips, v];
         setChips(c);
         emit(c, text);
       }}>
-        <option value="">＋ Choose from the list…</option>
+        <option value="">{tr("＋ Choose from the list…")}</option>
         {list.filter((x) => !chips.includes(x)).map((x) => <option key={x} value={x}>{x}</option>)}
       </select>
       {chips.length > 0 && (
@@ -43,13 +44,13 @@ export function CookingNotes({ value, onChange, max = 300 }: { value: string; on
           {chips.map((c) => (
             <span key={c} className="pill info" style={{ fontSize: '.85rem', padding: '.25rem .6rem' }}>
               {c}{' '}
-              <button type="button" className="ghost" aria-label={`Remove ${c}`} style={{ minHeight: 0, padding: 0, marginLeft: 4 }}
+              <button type="button" className="ghost" aria-label={tr("Remove {0}", c)} style={{ minHeight: 0, padding: 0, marginLeft: 4 }}
                 onClick={() => { const n = chips.filter((x) => x !== c); setChips(n); emit(n, text); }}>✕</button>
             </span>
           ))}
         </div>
       )}
-      <input placeholder="…or type your own note" value={text} maxLength={max}
+      <input placeholder={tr("…or type your own note")} value={text} maxLength={max}
         onChange={(e) => { setText(e.target.value); emit(chips, e.target.value); }} />
     </div>
   );

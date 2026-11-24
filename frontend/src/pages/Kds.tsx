@@ -1,3 +1,4 @@
+import { useT as useTr } from '../i18n';
 import { useCallback, useEffect, useState } from 'react';
 import { Link, Navigate, useParams } from 'react-router-dom';
 import { api } from '../api';
@@ -17,6 +18,7 @@ const PENDING = ['new', 'sent', 'accepted'];
 
 /** Kitchen Display: live KOTs per preparation station (any number of kitchens / bars), replaces paper tickets. */
 export function Kds() {
+  const tr = useTr();
   const { me, loading, branchId, can } = useSession();
   const { tenant } = useParams();
   // Each screen remembers its station (e.g. the grill screen always shows the grill).
@@ -35,7 +37,7 @@ export function Kds() {
     const list = staff ?? await api.get('/kds/staff').catch(() => []);
     setStaff(list);
     if (!list.length) {
-      toast('No kitchen staff set up — taken under your name. Give cooks the Kitchen role (Settings → Users).', true);
+      toast(tr("No kitchen staff set up — taken under your name. Give cooks the Kitchen role (Settings → Users)."), true);
       return run(() => api.post(url, { status: 'preparing' })).then(load);
     }
     setPick({ url, what });
@@ -44,26 +46,26 @@ export function Kds() {
   const load = useCallback(() => api.get(`/kds/orders${station ? `?station_id=${station}` : ''}`).then(setOrders).catch(() => setOrders([])), [station]);
   useEffect(() => { if (me?.user) load(); const i = setInterval(load, 20000); const t = setInterval(() => tick((x) => x + 1), 30000); return () => { clearInterval(i); clearInterval(t); }; }, [load, me]);
   useBranchEvents(branchId, ['kds:new', 'kds:update', 'kds:void', 'kds:cancel'], (e, d) => {
-    if (e === 'kds:new' && (!station || d.station_id === station)) { toast(`New ${d.station_name} ticket — ${d.table_name ? 'Table ' + d.table_name : d.ticket_ref}`); try { new Audio('data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA=').play(); } catch { /* */ } }
-    if (e === 'kds:void') toast(`VOID ${fmtQty(d.qty)}× ${d.name} (${d.ticket_ref})`, true);
-    if (e === 'kds:cancel') toast(`CANCELLED ${d.ticket_ref}`, true);
+    if (e === 'kds:new' && (!station || d.station_id === station)) { toast(tr("New {0} ticket — {1}", d.station_name, d.table_name ? 'Table ' + d.table_name : d.ticket_ref)); try { new Audio('data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA=').play(); } catch { /* */ } }
+    if (e === 'kds:void') toast(tr("VOID {0}× {1} ({2})", fmtQty(d.qty), d.name, d.ticket_ref), true);
+    if (e === 'kds:cancel') toast(tr("CANCELLED {0}", d.ticket_ref), true);
     load();
   });
 
   if (loading) return <Loading />;
   if (!me?.user) return <Navigate to={`/${tenant}`} replace />;
-  if (!can('kds.view')) return <div className="card">No KDS permission.</div>;
+  if (!can('kds.view')) return <div className="card">{tr("No KDS permission.")}</div>;
 
   return (
     <div className="app">
       <AppBar onLock={async () => { await api.post('/auth/logout', {}); location.href = '/' + tenant; }}
         right={<>
-          <span className="day-pill">{orders?.length ?? 0} open</span>
-          {can('pos.access') && <Link className="btn" to={'/' + tenant + '/pos'}>🧾 POS</Link>}
+          <span className="day-pill">{orders?.length ?? 0} {tr(" open")}</span>
+          {can('pos.access') && <Link className="btn" to={'/' + tenant + '/pos'}>{tr("🧾 POS")}</Link>}
         </>}>
-        <select aria-label="Kitchen / bar" value={station} onChange={(e) => pickStation(e.target.value ? Number(e.target.value) : '')}
+        <select aria-label={tr("Kitchen / bar")} value={station} onChange={(e) => pickStation(e.target.value ? Number(e.target.value) : '')}
           style={{ height: 44, minWidth: 180, fontWeight: 600 }}>
-          <option value="">All kitchens &amp; bars</option>
+          <option value="">{tr("All kitchens & bars")}</option>
           {stations.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
         </select>
       </AppBar>
@@ -78,11 +80,11 @@ export function Kds() {
           return (
             <div key={k.id} className="kot">
               <div className={`kot-head ${age >= 20 ? 'very-late' : age >= 10 ? 'late' : ''}`} style={age < 10 ? { background: k.station_color } : undefined}>
-                <span>{!station && <>{k.station_name} · </>}{k.table_name ? `Table ${k.table_name}` : ORDER_TYPES[k.order_type]} · #{k.kot_no}</span>
-                <span>{age}m</span>
+                <span>{!station && <>{k.station_name} · </>}{k.table_name ? tr("Table {0}", k.table_name) : tr(ORDER_TYPES[k.order_type])} · #{k.kot_no}</span>
+                <span>{age}{tr("m")}</span>
               </div>
-              <div className="small muted" style={{ padding: '.3rem .7rem' }}>{k.ticket_ref} · {time(k.created_at)}{k.pax ? ` · ${k.pax} pax` : ''}{k.customer_name ? ` · ${k.customer_name}` : ''} · <b>{k.status}</b>
-                {k.scheduled_for && <div className="warn"><b>⏰ Ready for {new Date(k.scheduled_for).toLocaleString(undefined, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</b></div>}</div>
+              <div className="small muted" style={{ padding: '.3rem .7rem' }}>{k.ticket_ref} · {time(k.created_at)}{k.pax ? tr(" · {0} pax", k.pax) : ''}{k.customer_name ? ` · ${k.customer_name}` : ''} · <b>{k.status}</b>
+                {k.scheduled_for && <div className="warn"><b>{tr("⏰ Ready for ")}{new Date(k.scheduled_for).toLocaleString(undefined, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</b></div>}</div>
               <ul>
                 {(k.lines as any[]).map((l, i) => {
                   const st = l.void ? 'void' : PENDING.includes(l.kitchen_status) ? 'pending' : l.kitchen_status;
@@ -91,38 +93,38 @@ export function Kds() {
                     <li key={i} className={`kline ${st}`}>
                       <div className="row between nowrap" style={{ alignItems: 'flex-start' }}>
                         <div>
-                          <b>{fmtQty(l.qty)}×</b> {l.name}{l.size ? ` (${l.size})` : ''}{l.seat ? <span className="pill">S{l.seat}</span> : null}
+                          <b>{fmtQty(l.qty)}×</b> {l.name}{l.size ? ` (${l.size})` : ''}{l.seat ? <span className="pill">{tr("S")}{l.seat}</span> : null}
                           {(l.modifiers as any[])?.length > 0 && <div className="small">+ {(l.modifiers as any[]).map((m) => m.name).join(', ')}</div>}
                           {l.notes && <div className="small">📝 {l.notes}</div>}
-                          {l.allergy && <div className="small bad"><b>⚠ ALLERGY: {l.allergy}</b></div>}
-                          {st === 'pending' && <div className="small"><b>PENDING — not taken</b></div>}
-                          {st === 'preparing' && <div className="small">👨‍🍳 {l.chef ?? 'Cooking'}{l.kitchen_at ? ` · ${minutesSince(l.kitchen_at)}m` : ''}</div>}
+                          {l.allergy && <div className="small bad"><b>{tr("⚠ ALLERGY: ")}{l.allergy}</b></div>}
+                          {st === 'pending' && <div className="small"><b>{tr("PENDING — not taken")}</b></div>}
+                          {st === 'preparing' && <div className="small">👨‍🍳 {l.chef ?? tr("Cooking")}{l.kitchen_at ? tr(" · {0}m", minutesSince(l.kitchen_at)) : ''}</div>}
                         </div>
                         <div className="row nowrap" style={{ gap: '.3rem' }}>
-                          {st === 'pending' && <button className="sm dark" onClick={() => take(`/kds/lines/${l.line_id}/status`, `${fmtQty(l.qty)}× ${l.name}`)}>Take</button>}
+                          {st === 'pending' && <button className="sm dark" onClick={() => take(`/kds/lines/${l.line_id}/status`, `${fmtQty(l.qty)}× ${l.name}`)}>{tr("Take")}</button>}
                           {st === 'preparing' && <>
-                            <button className="sm ok" onClick={() => setLine('ready')}>Ready</button>
-                            <button className="sm" title="Release back to the queue" aria-label="Release back to the queue" onClick={() => setLine('sent')}>↩</button>
+                            <button className="sm ok" onClick={() => setLine('ready')}>{tr("Ready")}</button>
+                            <button className="sm" title={tr("Release back to the queue")} aria-label={tr("Release back to the queue")} onClick={() => setLine('sent')}>↩</button>
                           </>}
-                          {st === 'ready' && <button className="sm ok" onClick={() => setLine('served')}>🍽 Serve</button>}
-                          {st === 'served' && <span className="pill">Served</span>}
-                          {st === 'void' && <span className="pill">VOID</span>}
+                          {st === 'ready' && <button className="sm ok" onClick={() => setLine('served')}>{tr("🍽 Serve")}</button>}
+                          {st === 'served' && <span className="pill">{tr("Served")}</span>}
+                          {st === 'void' && <span className="pill">{tr("VOID")}</span>}
                         </div>
                       </div>
                     </li>
                   );
                 })}
               </ul>
-              {k.ticket_notes && <div className="small" style={{ padding: '0 .7rem .5rem' }}>Note: {k.ticket_notes}</div>}
+              {k.ticket_notes && <div className="small" style={{ padding: '0 .7rem .5rem' }}>{tr("Note: ")}{k.ticket_notes}</div>}
               {next && <button className={`${next.cls} lg`} style={{ borderRadius: 0 }} onClick={() => (next.status === 'preparing'
                 ? take(`/kds/orders/${k.id}/status`, `all remaining items of ${k.ticket_ref}`)
-                : run(() => api.post(`/kds/orders/${k.id}/status`, { status: next.status })).then(load))}>{next.label}</button>}
+                : run(() => api.post(`/kds/orders/${k.id}/status`, { status: next.status })).then(load))}>{tr(next.label)}</button>}
             </div>
           );
         })}
-        {orders?.length === 0 && <div style={{ color: '#94a3b8', padding: '2rem' }}>No open tickets 🎉</div>}
+        {orders?.length === 0 && <div style={{ color: '#94a3b8', padding: '2rem' }}>{tr("No open tickets 🎉")}</div>}
         {pick && staff && (
-          <Modal title={`Who takes ${pick.what}?`} onClose={() => setPick(null)}>
+          <Modal title={tr("Who takes {0}?", pick.what)} onClose={() => setPick(null)}>
             <div className="staff-grid">
               {staff.map((s) => (
                 <button key={s.id} style={{ background: s.color }} onClick={async () => {

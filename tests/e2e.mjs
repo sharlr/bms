@@ -415,9 +415,9 @@ const itemRep = must(await admin.get(`${T}/reports/items?${R}`), 'item sales rep
 ok(itemRep.items.some((i) => i.item_name === 'Margherita' && i.size_name === 'Large'), 'item-wise sales per item & size');
 ok(Math.abs(itemRep.totals.net_amount - (mr.totals.net - mr.totals.refunds)) < 0.05, `item sales net (${itemRep.totals.net_amount}) = sales − refunds (${mr.totals.net - mr.totals.refunds})`);
 ok((await admin.get(`${T}/reports/items?from=${today}&to=2020-01-01`)).status === 400, 'inverted date range rejected');
-must(await admin.patch(`${T}/auth/profile`, { theme: 'navy', language: 'fr', position: 'Owner' }), 'profile prefs');
+must(await admin.patch(`${T}/auth/profile`, { theme: 'navy', language: 'nl', position: 'Owner' }), 'profile prefs');
 const me2 = must(await admin.get(`${T}/auth/me`), 'me after prefs');
-ok(me2.user.theme === 'navy' && me2.user.language === 'fr' && me2.user.position === 'Owner', 'profile theme/language/position saved');
+ok(me2.user.theme === 'navy' && me2.user.language === 'nl' && me2.user.position === 'Owner', 'profile theme/language/position saved');
 ok((await admin.patch(`${T}/auth/profile`, { theme: 'rainbow' })).status === 400, 'unknown theme rejected');
 
 // ---------- Line edit keeps fields that were not sent ----------

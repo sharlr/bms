@@ -1,3 +1,4 @@
+import { useT as useTr } from '../../i18n';
 import QRCode from 'qrcode';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { api, tenantSlug } from '../../api';
@@ -15,6 +16,7 @@ const newId = () => Math.random().toString(36).slice(2, 10);
  * drag the corner handle to resize, arrow keys to nudge, Delete to remove. "Save plan" persists everything.
  */
 export function FloorEditor() {
+  const tr = useTr();
   const [floors, setFloors] = useState<any[]>([]);
   const [floorId, setFloorId] = useState<number | null>(null);
   const [tables, setTables] = useState<any[]>([]);
@@ -102,7 +104,7 @@ export function FloorEditor() {
     if (!sel) return;
     if (sel.t === 'decor') { setLayout((l) => l.filter((d) => d.id !== sel.id)); setDirty(true); setSel(null); return; }
     const t = tables.find((x) => x.id === sel.id);
-    if (t && confirm(`Remove table ${t.name}?`) && await run(() => api.del(`/tables/${t.id}`), 'Table removed')) {
+    if (t && confirm(tr("Remove table {0}?", t.name)) && await run(() => api.del(`/tables/${t.id}`), tr("Table removed"))) {
       setTables((ts) => ts.filter((x) => x.id !== t.id));
       dirtyTables.current.delete(t.id);
       setSel(null);
@@ -129,12 +131,12 @@ export function FloorEditor() {
     const nums = tables.map((t) => Number(/(\d+)$/.exec(t.name)?.[1] ?? 0));
     const name = `T${Math.max(0, ...nums) + 1}`;
     const body = { floor_id: floorId, name, seats: shape === 'rect' ? 6 : 4, shape, width: shape === 'rect' ? 160 : 90, height: 90, pos_x: 40, pos_y: 40 };
-    const t = await run(() => api.post('/tables', body), `Table ${name} added — drag it into place`);
+    const t = await run(() => api.post('/tables', body), tr("Table {0} added — drag it into place", name));
     if (t) { setTables((ts) => [...ts, t]); setSel({ t: 'table', id: t.id }); }
   };
   const addDecor = (kind: string) => {
     const k = KINDS[kind];
-    const d: PlanItem = { id: newId(), kind, x: 40, y: 40, w: k.w, h: k.h, ...(kind === 'text' ? { label: 'Terrace' } : {}) };
+    const d: PlanItem = { id: newId(), kind, x: 40, y: 40, w: k.w, h: k.h, ...(kind === 'text' ? { label: tr("Terrace") } : {}) };
     setLayout((l) => [...l, d]);
     setSel({ t: 'decor', id: d.id });
     setDirty(true);
@@ -149,10 +151,10 @@ export function FloorEditor() {
       }
       await api.patch(`/floors/${floorId}`, { layout, width: size.width, height: size.height });
       return true;
-    }, 'Plan saved');
+    }, tr("Plan saved"));
     if (ok) { dirtyTables.current.clear(); setDirty(false); setFloors((fs) => fs.map((f) => (f.id === floorId ? { ...f, layout, ...size } : f))); }
   };
-  const switchFloor = (id: number) => { if (!dirty || confirm('Discard unsaved changes on this floor?')) setFloorId(id); };
+  const switchFloor = (id: number) => { if (!dirty || confirm(tr("Discard unsaved changes on this floor?"))) setFloorId(id); };
 
   const qrFor = async (list: any[]) => {
     const out = [];
@@ -169,43 +171,43 @@ export function FloorEditor() {
   return (
     <div className="stack">
       <div className="row between">
-        <h1>Floor Plan Designer</h1>
+        <h1>{tr("Floor Plan Designer")}</h1>
         <div className="row">
-          {dirty && <span className="pill warn">Unsaved changes</span>}
-          <button className="primary" disabled={!dirty} onClick={save}>💾 Save plan</button>
-          <button disabled={!shown.length} onClick={() => qrFor(shown)}>Print QR codes</button>
+          {dirty && <span className="pill warn">{tr("Unsaved changes")}</span>}
+          <button className="primary" disabled={!dirty} onClick={save}>{tr("💾 Save plan")}</button>
+          <button disabled={!shown.length} onClick={() => qrFor(shown)}>{tr("Print QR codes")}</button>
         </div>
       </div>
 
       <div className="row">
         {floors.map((f) => <button key={f.id} className={f.id === floorId ? 'primary' : ''} onClick={() => switchFloor(f.id)}>{f.name}</button>)}
-        <button onClick={async () => { const name = prompt('New floor name (e.g. Terrace, 1st floor)'); if (name && await run(() => api.post('/floors', { name }))) load(); }}>+ Floor</button>
+        <button onClick={async () => { const name = prompt(tr("New floor name (e.g. Terrace, 1st floor)")); if (name && await run(() => api.post('/floors', { name }))) load(); }}>{tr("+ Floor")}</button>
         <div className="grow" />
         {floorId && <>
           <button className="sm" onClick={async () => {
-            const name = prompt('Rename floor', floor?.name);
+            const name = prompt(tr("Rename floor"), floor?.name);
             if (name && await run(() => api.patch(`/floors/${floorId}`, { name }))) load();
-          }}>Rename floor</button>
+          }}>{tr("Rename floor")}</button>
           <button className="sm danger" onClick={async () => {
-            if (shown.length) return alert('Move or remove the tables on this floor first.');
-            if (confirm('Delete this floor?') && await run(() => api.del(`/floors/${floorId}`))) { setFloorId(null); load(); }
-          }}>Delete floor</button>
+            if (shown.length) return alert(tr("Move or remove the tables on this floor first."));
+            if (confirm(tr("Delete this floor?")) && await run(() => api.del(`/floors/${floorId}`))) { setFloorId(null); load(); }
+          }}>{tr("Delete floor")}</button>
         </>}
       </div>
 
-      {!floorId ? <div className="card">Create a floor to start drawing.</div> : (
+      {!floorId ? <div className="card">{tr("Create a floor to start drawing.")}</div> : (
         <div className="designer">
           <div className="stack">
             <div className="card stack" style={{ padding: '.6rem' }}>
               <div className="palette-tools">
-                <b style={{ alignSelf: 'center' }}>Tables:</b>
-                <button onClick={() => addTable('square')}>⬛ Square</button>
-                <button onClick={() => addTable('round')}>⚫ Round</button>
-                <button onClick={() => addTable('rect')}>▭ Long</button>
+                <b style={{ alignSelf: 'center' }}>{tr("Tables:")}</b>
+                <button onClick={() => addTable('square')}>{tr("⬛ Square")}</button>
+                <button onClick={() => addTable('round')}>{tr("⚫ Round")}</button>
+                <button onClick={() => addTable('rect')}>{tr("▭ Long")}</button>
               </div>
               <div className="palette-tools">
-                <b style={{ alignSelf: 'center' }}>Draw:</b>
-                {Object.entries(KINDS).map(([kind, k]) => <button key={kind} onClick={() => addDecor(kind)}>{k.icon} {k.name}</button>)}
+                <b style={{ alignSelf: 'center' }}>{tr("Draw:")}</b>
+                {Object.entries(KINDS).map(([kind, k]) => <button key={kind} onClick={() => addDecor(kind)}>{k.icon} {tr(k.name)}</button>)}
               </div>
             </div>
             <ScaledPlan width={size.width} height={size.height} onScale={onScale}>
@@ -224,72 +226,71 @@ export function FloorEditor() {
                   <div key={t.id} className={`tbl ${t.shape === 'round' ? 'round' : ''}`} onPointerDown={(e) => startDrag(e, { t: 'table', id: t.id }, 'move')}
                     style={{ left: t.pos_x, top: t.pos_y, width: t.width, height: t.height, cursor: 'move', outline: on ? '3px solid var(--brand)' : undefined, outlineOffset: 3 }}>
                     <span style={{ fontSize: Math.max(12, Math.min(22, t.height / 4)) }}>{t.name}</span>
-                    <span className="meta">{t.seats} seats</span>
+                    <span className="meta">{t.seats} {tr(" seats")}</span>
                     {on && <div className="handle" onPointerDown={(e) => startDrag(e, { t: 'table', id: t.id }, 'resize')} />}
                   </div>
                 );
               })}
             </ScaledPlan>
-            <div className="small muted">Drag to move · drag the orange corner to resize · arrow keys nudge (Shift = 1 px) · Delete removes · everything snaps to a {GRID} px grid.</div>
+            <div className="small muted">{tr("Drag to move · drag the orange corner to resize · arrow keys nudge (Shift = 1 px) · Delete removes · everything snaps to a ")}{GRID} {tr(" px grid.")}</div>
           </div>
 
           <div className="card stack">
             {selTable ? <>
-              <h3>Table {selTable.name}</h3>
-              <label className="field">Table number / name<input value={selTable.name} maxLength={20} onChange={(e) => patchTable(selTable.id, { name: e.target.value })} /></label>
-              <label className="field">Seats<input type="number" min={1} max={100} value={selTable.seats} onChange={(e) => patchTable(selTable.id, { seats: Math.max(1, Number(e.target.value) || 1) })} /></label>
-              <div className="field">Shape
-                <div className="row">{(['square', 'round', 'rect'] as const).map((s) => (
+              <h3>{tr("Table ")}{selTable.name}</h3>
+              <label className="field">{tr("Table number / name")}<input value={selTable.name} maxLength={20} onChange={(e) => patchTable(selTable.id, { name: e.target.value })} /></label>
+              <label className="field">{tr("Seats")}<input type="number" min={1} max={100} value={selTable.seats} onChange={(e) => patchTable(selTable.id, { seats: Math.max(1, Number(e.target.value) || 1) })} /></label>
+              <div className="field">{tr("Shape")}<div className="row">{(['square', 'round', 'rect'] as const).map((s) => (
                   <button key={s} className={`sm ${selTable.shape === s ? 'dark' : ''}`} onClick={() => patchTable(selTable.id, { shape: s })}>{s}</button>
                 ))}</div>
               </div>
               <div className="grid2">
-                <label className="field">Width<input type="number" step={10} value={selTable.width} onChange={(e) => patchTable(selTable.id, { width: Math.max(30, Number(e.target.value) || 30) })} /></label>
-                <label className="field">Height<input type="number" step={10} value={selTable.height} onChange={(e) => patchTable(selTable.id, { height: Math.max(30, Number(e.target.value) || 30) })} /></label>
+                <label className="field">{tr("Width")}<input type="number" step={10} value={selTable.width} onChange={(e) => patchTable(selTable.id, { width: Math.max(30, Number(e.target.value) || 30) })} /></label>
+                <label className="field">{tr("Height")}<input type="number" step={10} value={selTable.height} onChange={(e) => patchTable(selTable.id, { height: Math.max(30, Number(e.target.value) || 30) })} /></label>
               </div>
-              <label className="field">Move to floor<select value={selTable.floor_id} onChange={async (e) => {
-                if (await run(() => api.patch(`/tables/${selTable.id}`, { floor_id: Number(e.target.value) }), 'Table moved')) { setSel(null); load(); }
+              <label className="field">{tr("Move to floor")}<select value={selTable.floor_id} onChange={async (e) => {
+                if (await run(() => api.patch(`/tables/${selTable.id}`, { floor_id: Number(e.target.value) }), tr("Table moved"))) { setSel(null); load(); }
               }}>{floors.map((f) => <option key={f.id} value={f.id}>{f.name}</option>)}</select></label>
-              <div className="small muted">Guests above the seat count are still accepted at the POS.</div>
+              <div className="small muted">{tr("Guests above the seat count are still accepted at the POS.")}</div>
               <div className="row">
-                <button className="sm" onClick={() => qrFor([selTable])}>QR code</button>
-                <button className="sm danger" onClick={removeSelected}>Remove table</button>
+                <button className="sm" onClick={() => qrFor([selTable])}>{tr("QR code")}</button>
+                <button className="sm danger" onClick={removeSelected}>{tr("Remove table")}</button>
               </div>
             </> : selDecor ? <>
-              <h3>{KINDS[selDecor.kind]?.icon} {KINDS[selDecor.kind]?.name}</h3>
-              <label className="field">Label<input value={selDecor.label ?? ''} maxLength={40} placeholder={KINDS[selDecor.kind]?.name} onChange={(e) => patchDecor(selDecor.id, { label: e.target.value || undefined })} /></label>
+              <h3>{KINDS[selDecor.kind]?.icon} {tr(KINDS[selDecor.kind]?.name)}</h3>
+              <label className="field">{tr("Label")}<input value={selDecor.label ?? ''} maxLength={40} placeholder={tr(KINDS[selDecor.kind]?.name)} onChange={(e) => patchDecor(selDecor.id, { label: e.target.value || undefined })} /></label>
               <div className="grid2">
-                <label className="field">Width<input type="number" step={10} value={selDecor.w} onChange={(e) => patchDecor(selDecor.id, { w: Math.max(4, Number(e.target.value) || 4) })} /></label>
-                <label className="field">Height<input type="number" step={10} value={selDecor.h} onChange={(e) => patchDecor(selDecor.id, { h: Math.max(4, Number(e.target.value) || 4) })} /></label>
+                <label className="field">{tr("Width")}<input type="number" step={10} value={selDecor.w} onChange={(e) => patchDecor(selDecor.id, { w: Math.max(4, Number(e.target.value) || 4) })} /></label>
+                <label className="field">{tr("Height")}<input type="number" step={10} value={selDecor.h} onChange={(e) => patchDecor(selDecor.id, { h: Math.max(4, Number(e.target.value) || 4) })} /></label>
               </div>
-              <label className="field">Color<input type="color" value={selDecor.color ?? '#cbd5e1'} onChange={(e) => patchDecor(selDecor.id, { color: e.target.value })} /></label>
+              <label className="field">{tr("Color")}<input type="color" value={selDecor.color ?? '#cbd5e1'} onChange={(e) => patchDecor(selDecor.id, { color: e.target.value })} /></label>
               <div className="row">
-                <button className="sm" onClick={() => patchDecor(selDecor.id, { w: selDecor.h, h: selDecor.w })}>↻ Rotate 90°</button>
-                <button className="sm" onClick={() => { const d = { ...selDecor, id: newId(), x: selDecor.x + 20, y: selDecor.y + 20 }; setLayout((l) => [...l, d]); setSel({ t: 'decor', id: d.id }); setDirty(true); }}>⧉ Duplicate</button>
-                {selDecor.color && <button className="sm" onClick={() => patchDecor(selDecor.id, { color: undefined })}>Default color</button>}
-                <button className="sm danger" onClick={removeSelected}>Delete</button>
+                <button className="sm" onClick={() => patchDecor(selDecor.id, { w: selDecor.h, h: selDecor.w })}>{tr("↻ Rotate 90°")}</button>
+                <button className="sm" onClick={() => { const d = { ...selDecor, id: newId(), x: selDecor.x + 20, y: selDecor.y + 20 }; setLayout((l) => [...l, d]); setSel({ t: 'decor', id: d.id }); setDirty(true); }}>{tr("⧉ Duplicate")}</button>
+                {selDecor.color && <button className="sm" onClick={() => patchDecor(selDecor.id, { color: undefined })}>{tr("Default color")}</button>}
+                <button className="sm danger" onClick={removeSelected}>{tr("Delete")}</button>
               </div>
             </> : <>
-              <h3>Plan — {floor?.name}</h3>
-              <p className="small muted">Select an element to edit it, or add tables and drawing elements from the toolbar.</p>
+              <h3>{tr("Plan — ")}{floor?.name}</h3>
+              <p className="small muted">{tr("Select an element to edit it, or add tables and drawing elements from the toolbar.")}</p>
               <div className="grid2">
-                <label className="field">Plan width<input type="number" step={50} min={400} max={5000} value={size.width} onChange={(e) => { setSize({ ...size, width: Math.min(5000, Math.max(400, Number(e.target.value) || 400)) }); setDirty(true); }} /></label>
-                <label className="field">Plan height<input type="number" step={50} min={300} max={5000} value={size.height} onChange={(e) => { setSize({ ...size, height: Math.min(5000, Math.max(300, Number(e.target.value) || 300)) }); setDirty(true); }} /></label>
+                <label className="field">{tr("Plan width")}<input type="number" step={50} min={400} max={5000} value={size.width} onChange={(e) => { setSize({ ...size, width: Math.min(5000, Math.max(400, Number(e.target.value) || 400)) }); setDirty(true); }} /></label>
+                <label className="field">{tr("Plan height")}<input type="number" step={50} min={300} max={5000} value={size.height} onChange={(e) => { setSize({ ...size, height: Math.min(5000, Math.max(300, Number(e.target.value) || 300)) }); setDirty(true); }} /></label>
               </div>
-              <div className="small muted">{shown.length} table(s), {shown.reduce((s, t) => s + t.seats, 0)} seats on this floor.</div>
+              <div className="small muted">{shown.length} {tr(" table(s), ")}{shown.reduce((s, t) => s + t.seats, 0)} {tr(" seats on this floor.")}</div>
             </>}
           </div>
         </div>
       )}
 
       {qr && (
-        <Modal title="Table QR codes" onClose={() => setQr(null)} wide>
-          <button className="primary no-print" onClick={() => window.print()}>Print</button>
+        <Modal title={tr("Table QR codes")} onClose={() => setQr(null)} wide>
+          <button className="primary no-print" onClick={() => window.print()}>{tr("Print")}</button>
           <div className="printable" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(230px, 1fr))', gap: '1rem', marginTop: '1rem' }}>
             {qr.map((q) => (
               <div key={q.url} className="center" style={{ border: '1px dashed #999', padding: '.8rem', breakInside: 'avoid' }}>
-                <b style={{ fontSize: '1.3rem' }}>Table {q.name}</b><br /><img src={q.img} alt={`QR table ${q.name}`} /><br />
-                <span className="small">Scan to view the menu &amp; order</span>
+                <b style={{ fontSize: '1.3rem' }}>{tr("Table ")}{q.name}</b><br /><img src={q.img} alt={tr("QR table {0}", q.name)} /><br />
+                <span className="small">{tr("Scan to view the menu & order")}</span>
               </div>
             ))}
           </div>

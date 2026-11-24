@@ -1,3 +1,4 @@
+import { useT as useTr } from '../../i18n';
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { api } from '../../api';
@@ -15,6 +16,7 @@ const monthRange = (offset: number) => {
 };
 
 export function Dashboard() {
+  const tr = useTr();
   const { tenant } = useParams();
   const { me, can } = useSession();
   const t = useT();
@@ -48,7 +50,7 @@ export function Dashboard() {
       <div>
         <h1 style={{ fontSize: '1.6rem', marginBottom: '.2rem' }}>{hello} <span style={{ color: 'var(--brand)' }}>{first}</span>!</h1>
         <h2 style={{ marginBottom: '.1rem' }}>{t('Business overview')}</h2>
-        <div className="muted small">{days} days · {sel?.length ? `${sel.length} branch(es)` : t('All branches')}</div>
+        <div className="muted small">{days} {tr(" days · ")}{sel?.length ? tr("{0} branch(es)", sel.length) : t('All branches')}</div>
       </div>
 
       {allowed && (
@@ -101,7 +103,7 @@ export function Dashboard() {
       {low.length > 0 && (
         <div className="card">
           <h3>{t('Low stock alerts')}</h3>
-          <table className="data"><thead><tr><th>Ingredient</th><th className="num">On hand</th><th className="num">Minimum</th></tr></thead>
+          <table className="data"><thead><tr><th>{tr("Ingredient")}</th><th className="num">{tr("On hand")}</th><th className="num">{tr("Minimum")}</th></tr></thead>
             <tbody>{low.map((l) => <tr key={l.ingredient_id}><td>{l.name}</td><td className="num bad">{l.qty} {l.unit}</td><td className="num">{l.min_qty}</td></tr>)}</tbody></table>
         </div>
       )}

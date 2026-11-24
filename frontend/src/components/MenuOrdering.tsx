@@ -1,3 +1,4 @@
+import { useT as useTr } from '../i18n';
 import { useMemo, useState } from 'react';
 import { fmt } from '../util';
 import { Modal } from './ui';
@@ -15,6 +16,7 @@ export function useCart() {
 }
 
 export function MenuBrowser({ menu, currency, onAdd, big }: { menu: any; currency: string; onAdd: (l: Omit<CartLine, 'key'>) => void; big?: boolean }) {
+  const tr = useTr();
   const [cat, setCat] = useState<number | null>(menu.categories[0]?.id ?? null);
   const [pick, setPick] = useState<any>(null);
   const items = useMemo(() => menu.items.filter((i: any) => i.category_id === cat), [menu, cat]);
@@ -32,7 +34,7 @@ export function MenuBrowser({ menu, currency, onAdd, big }: { menu: any; currenc
             <button key={i.id} onClick={() => quickAdd(i)}>
               {i.image_url && <img className="thumb" src={i.image_url} alt="" />}
               <b>{i.name}</b>
-              <span className="muted">{i.sizes.length ? `from ${fmt(Math.min(...i.sizes.map((s: any) => s.price)), currency)}` : fmt(i.price, currency)}</span>
+              <span className="muted">{i.sizes.length ? tr("from {0}", fmt(Math.min(...i.sizes.map((s: any) => s.price)), currency)) : fmt(i.price, currency)}</span>
             </button>
           ))}
         </div>
@@ -43,11 +45,11 @@ export function MenuBrowser({ menu, currency, onAdd, big }: { menu: any; currenc
             <div>
               <b>{i.name}</b>
               {i.description && <div className="small muted">{i.description}</div>}
-              {i.allergens?.length > 0 && <div className="small warn">Contains: {i.allergens.join(', ')}</div>}
+              {i.allergens?.length > 0 && <div className="small warn">{tr("Contains: ")}{i.allergens.join(', ')}</div>}
               <div>{i.sizes.length ? i.sizes.map((s: any) => `${s.name} ${fmt(s.price)}`).join(' · ') : fmt(i.price, currency)}</div>
             </div>
           </div>
-          <button className="primary" onClick={() => quickAdd(i)}>Add</button>
+          <button className="primary" onClick={() => quickAdd(i)}>{tr("Add")}</button>
         </div>
       ))}
       {pick && <PickModal item={pick} menu={menu} currency={currency} onClose={() => setPick(null)} onAdd={(l) => { onAdd(l); setPick(null); }} />}
@@ -56,6 +58,7 @@ export function MenuBrowser({ menu, currency, onAdd, big }: { menu: any; currenc
 }
 
 function PickModal({ item, menu, currency, onClose, onAdd }: { item: any; menu: any; currency: string; onClose: () => void; onAdd: (l: Omit<CartLine, 'key'>) => void }) {
+  const tr = useTr();
   const [size, setSize] = useState<any>(item.sizes[0] ?? null);
   const [mods, setMods] = useState<number[]>([]);
   const [notes, setNotes] = useState('');
@@ -77,12 +80,12 @@ function PickModal({ item, menu, currency, onClose, onAdd }: { item: any; menu: 
             ))}</div>
           </div>
         ))}
-        <label className="field">Special instructions<input value={notes} maxLength={200} onChange={(e) => setNotes(e.target.value)} /></label>
-        <label className="field">Food allergies<input value={allergy} maxLength={200} onChange={(e) => setAllergy(e.target.value)} /></label>
+        <label className="field">{tr("Special instructions")}<input value={notes} maxLength={200} onChange={(e) => setNotes(e.target.value)} /></label>
+        <label className="field">{tr("Food allergies")}<input value={allergy} maxLength={200} onChange={(e) => setAllergy(e.target.value)} /></label>
         <button className="primary lg" onClick={() => onAdd({
           menu_item_id: item.id, size_id: size?.id ?? null, qty: 1, modifier_ids: mods, unit,
           name: item.name + (size ? ` (${size.name})` : ''), notes: notes || undefined, allergy_note: allergy || undefined,
-        })}>Add · {fmt(unit, currency)}</button>
+        })}>{tr("Add · ")}{fmt(unit, currency)}</button>
       </div>
     </Modal>
   );

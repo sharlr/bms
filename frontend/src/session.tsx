@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react';
 import { api, getBranchId, setContext } from './api';
+import { useLang } from './i18n';
 
 export interface Me {
   tenant: { slug: string; name: string };
@@ -32,6 +33,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [branchId, setBranchId] = useState<number | null>(getBranchId());
+  const { setLang } = useLang();
 
   const reload = useCallback(async () => {
     try {
@@ -47,9 +49,9 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       }
       setMe(m);
       // Theme + language follow the signed-in user (kept locally so terminals/login screens match).
-      if (m.user) { localStorage.setItem('bms:theme', m.user.theme); localStorage.setItem('bms:lang', m.user.language); }
+      // Theme + language follow the signed-in user (kept on the device so login / terminal screens match).
+      if (m.user) { localStorage.setItem('bms:theme', m.user.theme); setLang(m.user.language); }
       document.documentElement.dataset.theme = localStorage.getItem('bms:theme') ?? 'gold';
-      document.documentElement.lang = localStorage.getItem('bms:lang') ?? 'en';
       setError(null);
       return m;
     } catch (e) {
@@ -58,7 +60,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [setLang]);
 
   useEffect(() => { reload(); }, [reload]);
 
