@@ -13,7 +13,7 @@ export function Companies() {
   return <CrudPage title={tr("Companies")} path="/companies" deleteLabel={null}
     columns={[{ key: 'name', label: tr("Name") }, { key: 'legal_name', label: tr("Legal name") }, { key: 'base_currency', label: tr("Currency") }, { key: 'tax_id', label: tr("Tax ID") }, { key: 'active', label: tr("Active") }]}
     fields={[{ key: 'name', label: tr("Name / brand"), required: true }, { key: 'legal_name', label: tr("Legal name") }, { key: 'tax_id', label: tr("Tax ID") },
-      { key: 'base_currency', label: tr("Base currency"), type: 'select', required: true, optionsFrom: { path: '/currencies', label: tr("code"), value: 'code' } },
+      { key: 'base_currency', label: tr("Base currency"), type: 'select', required: true, optionsFrom: { path: '/currencies', label: 'code', value: 'code' } },
       { key: 'phone', label: tr("Phone") }, { key: 'email', label: tr("Email") }, { key: 'address', label: tr("Address"), type: 'textarea' }, { key: 'active', label: tr("Active"), type: 'bool' }]}
     defaults={{ base_currency: 'USD', active: true }}
     toolbar={<button onClick={() => reload()}>{tr("Refresh switcher")}</button>} />;
@@ -26,7 +26,7 @@ export function Branches() {
     columns={[{ key: 'company_name', label: tr("Company") }, { key: 'name', label: tr("Branch") }, { key: 'code', label: tr("Code") }, { key: 'timezone', label: tr("Timezone") },
       { key: 'tax_rate', label: tr("Tax %"), num: true }, { key: 'online_ordering', label: tr("Online ordering") }, { key: 'active', label: tr("Active") }]}
     fields={[
-      { key: 'company_id', label: tr("Company"), type: 'select', required: true, optionsFrom: { path: '/companies', label: tr("name") }, createOnly: true },
+      { key: 'company_id', label: tr("Company"), type: 'select', required: true, optionsFrom: { path: '/companies', label: 'name' }, createOnly: true },
       { key: 'name', label: tr("Name"), required: true }, { key: 'code', label: tr("Code (ticket prefix, e.g. WL)"), required: true },
       { key: 'timezone', label: tr("Timezone (e.g. Africa/Nairobi)") }, { key: 'phone', label: tr("Phone") }, { key: 'address', label: tr("Address"), type: 'textarea' },
       { key: 'tax_rate', label: tr("Tax rate %"), type: 'number' }, { key: 'tax_inclusive', label: tr("Prices include tax"), type: 'bool' },

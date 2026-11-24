@@ -274,15 +274,15 @@ export function AdminApp() {
                 { key: 'value', label: tr("Value"), num: true }, { key: 'zone_id', label: tr("Zone") }, { key: 'client_id', label: tr("Client") }, { key: 'menu_item_id', label: tr("Item") },
                 { key: 'branch_id', label: tr("Branch") }, { key: 'priority', label: tr("Priority"), num: true }, { key: 'active', label: tr("Active") }]}
               fields={[
-                { key: 'delivery_company_id', label: tr("Delivery partner"), type: 'select', required: true, optionsFrom: { path: '/delivery/companies', label: tr("name") }, createOnly: true },
+                { key: 'delivery_company_id', label: tr("Delivery partner"), type: 'select', required: true, optionsFrom: { path: '/delivery/companies', label: 'name' }, createOnly: true },
                 { key: 'basis', label: tr("Calculation basis"), type: 'select', required: true, options: [
                   { value: 'delivery', label: tr("Per delivery (order)") }, { value: 'item', label: tr("Per item") }, { value: 'zone', label: tr("Per location / zone") }, { value: 'client', label: tr("Per client") }] },
                 { key: 'commission_type', label: tr("Commission type"), type: 'select', required: true, options: [{ value: 'fixed', label: tr("Fixed amount") }, { value: 'percent', label: tr("Percentage") }] },
                 { key: 'value', label: tr("Value"), type: 'number', required: true },
-                { key: 'zone_id', label: tr("Zone (zone basis)"), type: 'select', optionsFrom: { path: '/delivery/zones', label: tr("name"), nullLabel: '—' } },
-                { key: 'client_id', label: tr("Client (client basis)"), type: 'select', optionsFrom: { path: '/clients', label: tr("name"), nullLabel: '—' } },
-                { key: 'menu_item_id', label: tr("Item (item basis; empty = all items)"), type: 'select', optionsFrom: { path: '/menu/items', label: tr("name"), nullLabel: tr("All items") } },
-                { key: 'branch_id', label: tr("Branch (empty = all)"), type: 'select', optionsFrom: { path: '/branches', label: tr("name"), nullLabel: tr("All branches") } },
+                { key: 'zone_id', label: tr("Zone (zone basis)"), type: 'select', optionsFrom: { path: '/delivery/zones', label: 'name', nullLabel: '—' } },
+                { key: 'client_id', label: tr("Client (client basis)"), type: 'select', optionsFrom: { path: '/clients', label: 'name', nullLabel: '—' } },
+                { key: 'menu_item_id', label: tr("Item (item basis; empty = all items)"), type: 'select', optionsFrom: { path: '/menu/items', label: 'name', nullLabel: tr("All items") } },
+                { key: 'branch_id', label: tr("Branch (empty = all)"), type: 'select', optionsFrom: { path: '/branches', label: 'name', nullLabel: tr("All branches") } },
                 { key: 'priority', label: tr("Priority"), type: 'number' }, { key: 'active', label: tr("Active"), type: 'bool' }]}
               defaults={{ basis: 'delivery', commission_type: 'percent', value: 0, priority: 0, active: true }} />)} />
             <Route path="delivery/commissions" element={g('delivery.manage', <CommissionReport />)} />
@@ -309,8 +309,8 @@ export function AdminApp() {
             <Route path="menu/categories" element={<CrudPage title={tr("Menu Categories")} path="/menu/categories" canWrite={can('menu.manage')}
               columns={[{ key: 'name', label: tr("Name") }, { key: 'station_id', label: tr("Prepared in") }, { key: 'color', label: tr("Color") }, { key: 'sort', label: tr("Sort"), num: true }, { key: 'active', label: tr("Active") }]}
               fields={[{ key: 'name', label: tr("Name"), required: true },
-                { key: 'station_id', label: tr("Prepared in (kitchen / bar)"), type: 'select', optionsFrom: { path: '/prep-stations', label: tr("name"), nullLabel: tr("No kitchen ticket") } },
-                { key: 'parent_id', label: tr("Parent category"), type: 'select', optionsFrom: { path: '/menu/categories', label: tr("name"), nullLabel: tr("— top level —") } },
+                { key: 'station_id', label: tr("Prepared in (kitchen / bar)"), type: 'select', optionsFrom: { path: '/prep-stations', label: 'name', nullLabel: tr("No kitchen ticket") } },
+                { key: 'parent_id', label: tr("Parent category"), type: 'select', optionsFrom: { path: '/menu/categories', label: 'name', nullLabel: tr("— top level —") } },
                 { key: 'color', label: tr("Tab color"), type: 'color' }, { key: 'sort', label: tr("Sort"), type: 'number' }, { key: 'active', label: tr("Active"), type: 'bool' }]}
               defaults={{ station_id: null, color: '#64748b', sort: 0, active: true }} />} />
             <Route path="menu/items" element={<MenuItems />} />
@@ -331,7 +331,7 @@ export function AdminApp() {
                 defaults={{ min_select: 0, max_select: 5, active: true }} />
               <CrudPage title={tr("Modifiers")} path="/menu/modifiers" canWrite={can('menu.manage')}
                 columns={[{ key: 'group_id', label: tr("Group") }, { key: 'name', label: tr("Modifier") }, { key: 'price_delta', label: tr("Price +/-"), num: true }, { key: 'active', label: tr("Active") }]}
-                fields={[{ key: 'group_id', label: tr("Group"), type: 'select', required: true, optionsFrom: { path: '/menu/modifier-groups', label: tr("name") }, createOnly: true },
+                fields={[{ key: 'group_id', label: tr("Group"), type: 'select', required: true, optionsFrom: { path: '/menu/modifier-groups', label: 'name' }, createOnly: true },
                   { key: 'name', label: tr("Name"), required: true }, { key: 'price_delta', label: tr("Price change"), type: 'number' }, { key: 'sort', label: tr("Sort"), type: 'number' }, { key: 'active', label: tr("Active"), type: 'bool' }]}
                 defaults={{ price_delta: 0, sort: 0, active: true }} />
             </div>} />
@@ -357,7 +357,7 @@ export function AdminApp() {
               columns={[{ key: 'name', label: tr("Name") }, { key: 'kind', label: tr("Kind") }, { key: 'station_id', label: tr("Kitchen / bar") }, { key: 'connection', label: tr("Connection") }, { key: 'active', label: tr("Active") }]}
               fields={[{ key: 'name', label: tr("Name"), required: true },
                 { key: 'kind', label: tr("Kind"), type: 'select', required: true, options: [{ value: 'kot', label: tr("Kitchen ticket (KOT)") }, { value: 'receipt', label: tr("Receipt") }] },
-                { key: 'station_id', label: tr("Kitchen / bar (for KOT printers)"), type: 'select', optionsFrom: { path: '/prep-stations', label: tr("name"), nullLabel: tr("— (receipt printer)") } },
+                { key: 'station_id', label: tr("Kitchen / bar (for KOT printers)"), type: 'select', optionsFrom: { path: '/prep-stations', label: 'name', nullLabel: tr("— (receipt printer)") } },
                 { key: 'connection', label: tr("Connection"), help: tr("tcp://192.168.1.50:9100 (reached by the in-store print agent), or \"browser\" for receipts") },
                 { key: 'chars_per_line', label: tr("Characters per line"), type: 'number' }, { key: 'active', label: tr("Active"), type: 'bool' }]}
               defaults={{ kind: 'kot', station_id: null, connection: 'tcp://192.168.1.50:9100', chars_per_line: 42, active: true }} />)} />
@@ -371,7 +371,7 @@ export function AdminApp() {
               columns={[{ key: 'code', label: tr("Code") }, { key: 'name', label: tr("Name") }, { key: 'channel_type', label: tr("Type") }, { key: 'branch_id', label: tr("Branch") }, { key: 'active', label: tr("Active") }]}
               fields={[{ key: 'code', label: tr("Code (A-Z, 0-9, _)"), required: true }, { key: 'name', label: tr("Name"), required: true },
                 { key: 'channel_type', label: tr("Type"), type: 'select', required: true, options: ['pos', 'waiter', 'takeaway', 'kiosk', 'qr', 'online', 'delivery'].map((v) => ({ value: v, label: v })) },
-                { key: 'branch_id', label: tr("Branch (empty = all)"), type: 'select', optionsFrom: { path: '/branches', label: tr("name"), nullLabel: tr("All branches") } },
+                { key: 'branch_id', label: tr("Branch (empty = all)"), type: 'select', optionsFrom: { path: '/branches', label: 'name', nullLabel: tr("All branches") } },
                 { key: 'active', label: tr("Active"), type: 'bool' }]} defaults={{ channel_type: 'pos', active: true }} />)} />
             <Route path="settings/print-jobs" element={g('org.manage', <PrintJobs />)} />
             <Route path="*" element={<div className="card">{tr("Not found")}</div>} />
